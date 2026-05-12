@@ -1,0 +1,19 @@
+{
+  "name": "sonzai-sdk",
+  "description": "Help AI coding agents implement the Sonzai SDK (Python, TypeScript, Go) correctly against the live api.sonz.ai OpenAPI spec.",
+  "author": {
+    "name": "Sonzai Labs",
+    "email": "support@sonz.ai",
+    "url": "https://sonz.ai"
+  },
+  "homepage": "https://sonz.ai/docs",
+  "repository": "https://github.com/sonz-ai/sonzai-claude-skill",
+  "license": "MIT",
+  "keywords": [
+    "sonzai",
+    "sdk",
+    "ai-agents",
+    "memory",
+    "personality"
+  ]
+}

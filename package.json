@@ -1,0 +1,18 @@
+{
+  "name": "sonzai-claude-skill",
+  "version": "0.1.0",
+  "description": "Claude Code skill for implementing the Sonzai SDK (Python, TypeScript, Go) correctly.",
+  "license": "MIT",
+  "homepage": "https://sonz.ai/docs",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/sonz-ai/sonzai-claude-skill"
+  },
+  "keywords": [
+    "claude-code",
+    "claude-skill",
+    "sonzai",
+    "sdk",
+    "ai-agents"
+  ]
+}
