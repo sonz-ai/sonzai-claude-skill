@@ -1,6 +1,6 @@
 {
   "name": "sonzai-claude-skill",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Wizard-driven skill for AI coding agents (Claude Code, Codex, Gemini CLI, Copilot CLI) to implement the Sonzai SDK correctly across Python, TypeScript, and Go. Covers 7 archetypes, 20 feature references, 10 decision aids, 9 migration playbooks.",
   "license": "MIT",
   "homepage": "https://sonz.ai/docs",

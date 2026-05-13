@@ -15,6 +15,8 @@ Wizard-driven implementation guide for the Sonzai Mind Layer API across Python, 
 - User calls `api.sonz.ai`, mentions Sonzai agents, memory, personality, mood, sessions
 - User is converting raw HTTP/curl calls to a typed SDK
 - User mentions building a companion / matchmaker / personality-routed app / enterprise assistant / game NPC / coach / customer support agent
+- User mentions integrating Sonzai via MCP (Claude Code / Cursor / ChatGPT / Claude Desktop / VS Code) — load `features/mcp-integration.md`
+- User mentions OpenClaw integration (`@sonzai-labs/openclaw-context`) — load `features/openclaw-integration.md`
 
 ## Step 0 — Drift check (REQUIRED)
 

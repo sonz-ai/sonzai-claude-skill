@@ -28,6 +28,9 @@ Before asking anything, scan the workspace for signals. If a signal is present, 
 | User prompt contains "NPC / character / game / inventory / quests" | `archetype hint=game-npc` (confirm) |
 | User prompt contains "customer support / ticket / help desk / Zendesk / Intercom" | `archetype hint=customer-support` (confirm) |
 | User prompt contains "coach / therapist / journal / wellness / mental health" | `archetype hint=coach-therapist` (confirm) |
+| User prompt contains "Claude Desktop / Cursor / ChatGPT / Claude Code MCP / VS Code MCP" | `install path = MCP` — load `features/mcp-integration.md` ahead of wizard |
+| User prompt contains "OpenClaw / openclaw / `@sonzai-labs/openclaw-context`" | `install path = OpenClaw` — load `features/openclaw-integration.md` ahead of wizard |
+| `~/.cursor/mcp.json` or `.vscode/mcp.json` or `~/.openclaw/openclaw.json` present | install path inferred per above |
 
 ---
 
@@ -87,13 +90,15 @@ Ask in order, **skipping any answered by inference**. Each question's options ar
 - **500ms–2s** (interactive chat, web/mobile UIs) → `memory_mode=async` is recommended.
 - **2s+** (patient flows, batch, server-to-server) → `memory_mode=sync` is fine (default — facts always land same turn).
 
-### Q7 — Language
+### Q7 — Integration path
 
-> "Which SDK?"
+> "How are you integrating?"
 
-- **Python** (`pip install sonzai`)
-- **TypeScript** (`npm install @sonzai-labs/agents`)
-- **Go** (`go get github.com/sonz-ai/sonzai-go`)
+- **Python SDK** (`pip install sonzai`) — build/run server-side in Python
+- **TypeScript SDK** (`npm install @sonzai-labs/agents`) — build/run server-side in Node / Bun / Deno
+- **Go SDK** (`go get github.com/sonz-ai/sonzai-go`) — build/run server-side in Go
+- **MCP-only** (Claude Code / Cursor / ChatGPT / Claude Desktop / VS Code) — no SDK code; client config + hosted MCP server. Load `features/mcp-integration.md` for the config pattern. The archetype playbook still applies (companion / guide-router / etc.) — you just create/configure the agent via MCP guided prompts or dashboard instead of SDK code.
+- **OpenClaw plugin** (`@sonzai-labs/openclaw-context`) — Sonzai as the `contextEngine` slot. Load `features/openclaw-integration.md`. Same archetypes; agent provisioning via wizard or B2B SDK.
 
 Skip if inferred from workspace.
 

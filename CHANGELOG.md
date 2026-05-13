@@ -2,6 +2,24 @@
 
 All notable changes to `sonzai-claude-skill` are documented here. The project follows [Semantic Versioning](https://semver.org/). Dates are `YYYY-MM-DD`.
 
+## v1.1.0 — 2026-05-13
+
+### Added
+
+- **`features/mcp-integration.md`** — consuming Sonzai via the hosted MCP server at `https://api.sonz.ai/mcp/memory/{agent_id}`. Setup snippets for Claude Code, Cursor, VS Code, ChatGPT (Developer Mode), Claude Desktop, and the local stdio binary fallback. Covers the 34-tool surface and trade-offs vs SDK.
+- **`features/openclaw-integration.md`** — using the `@sonzai-labs/openclaw-context` plugin to register Sonzai as OpenClaw's `contextEngine` slot. One-shot install, manual install, openclaw.json shape, B2B provisioning patterns for TS / Python / Go.
+
+### Changed
+
+- **`intake.md`** Q7 renamed from "Language" to "Integration path"; now offers 5 options (Python / TS / Go SDKs + MCP-only + OpenClaw). Pre-question inference detects MCP / OpenClaw signals in the workspace.
+- **`SKILL.md`** trigger list extended to recognize MCP / OpenClaw integration intents.
+
+### Rationale
+
+v1.0.0 framed MCP and OpenClaw as "out of scope" (integration paths, not development surfaces). Reality: your quickstart docs show MCP and OpenClaw alongside Python / TS / Go SDKs as install paths — a developer wiring Sonzai into Claude Desktop or OpenClaw IS doing integration work. Closing the gap.
+
+Cross-reference integrity: 398 internal references verified.
+
 ## v1.0.0 — 2026-05-13
 
 Wizard-driven release. Diagnoses what the developer is building, prescribes archetype + memory mode + capabilities, drives them through spec → review → plan.
