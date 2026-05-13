@@ -1,7 +1,7 @@
 {
   "name": "sonzai-sdk",
-  "version": "1.1.0",
-  "description": "Wizard-driven skill: diagnoses what you're building with the Sonzai SDK, prescribes the right archetype + memory mode + capabilities, and drives you through spec → review → plan. Covers 7 archetypes, 20 feature references, 10 decision aids, 9 migration playbooks.",
+  "version": "1.2.0",
+  "description": "Two skills for Sonzai SDK developers: (1) sonzai-sdk — wizard-driven, prescribes archetype + memory mode + capabilities, drives spec → review → plan. (2) full-auto — autonomous closed-loop: takes a meeting transcript, dispatches a builder subagent, exercises the built app (API + UI), feeds failures back until it works. Covers 7 archetypes, 20+ feature references, 10 decision aids, 9 migration playbooks.",
   "author": {
     "name": "Sonzai Labs",
     "email": "engineering@sonz.ai",

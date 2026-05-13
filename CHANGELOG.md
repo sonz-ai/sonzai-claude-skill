@@ -2,6 +2,46 @@
 
 All notable changes to `sonzai-claude-skill` are documented here. The project follows [Semantic Versioning](https://semver.org/). Dates are `YYYY-MM-DD`.
 
+## v1.2.0 — 2026-05-13
+
+### Added: `full-auto` skill
+
+A second skill in the plugin: `skills/full-auto/`. Autonomous closed-loop Sonzai implementer. Transcript in → working repo out. Zero operator prompts.
+
+**Pipeline (6 phases):**
+
+1. **Drift check** — fetch live OpenAPI from `https://api.sonz.ai/docs/openapi.json` into `.full-auto/openapi.live.json`
+2. **Transcript ingest** — file arg, prior message, or inline; persist to `.full-auto/transcript.txt`
+3. **Signal extraction** (`transcript-analysis.md`) — direct-quote evidence for archetype, integration path, latency, capabilities, brand/persona, proactive features, scope → `.full-auto/signals.md`
+4. **Wizard-answer derivation** (`answer-derivation.md`) — deterministic mapping to all 7 wizard answers + archetype follow-ups + capabilities (resolved against UpdateCapabilitiesInputBody) + acceptance checklist → `.full-auto/wizard-answers.md`
+5. **Builder subagent dispatch** (`builder-dispatch.md`) — Agent with name `sonzai-builder` reads wizard-answers, runs `sonzai-sdk` skill non-interactively, fills spec template, invokes `superpowers:writing-plans` and `superpowers:subagent-driven-development`, commits locally, returns structured JSON
+6. **QA loop** (`qa-loop.md`) — outer session starts servers in background, exercises every endpoint in the acceptance checklist, drives the UI via browser MCP (chrome-devtools or playwright; falls back to API-contract-only if absent), aggregates failures, `SendMessage`s `sonzai-builder` with the fixer template, repeats up to 5 cycles
+7. **Final report** (`final-report.md.template`) — `.full-auto/REPORT.md` with what was built, what was tested, all assumptions, all cycle reports, operator next steps
+
+**Subagent prompts:**
+
+- `subagent-prompts/builder-prompt.md.template` — initial dispatch with JSON return contract, hard rules (no `git push`, no mocks, no invented SDK symbols, no questions back), self-check checklist
+- `subagent-prompts/fixer-prompt.md.template` — re-dispatch via SendMessage with QA cycle report; minimum-change discipline; per-failure hypothesis; PARTIAL status for operator-actionable items
+
+**Hard rules:**
+
+1. Never ask the operator a question — ambiguity becomes a documented assumption
+2. Bounded 5-cycle fix loop; cycle 5 with failures → `.full-auto/BLOCKED.md`, exit
+3. Local commits only — never `git push`, never `gh pr create`
+4. Drift check first — never proceed without a live OpenAPI snapshot
+5. No invented SDK symbols — every capability flag / method must verify against the drift artifact
+6. No mock SDK call paths — real SDK, real API key, or BLOCKED
+
+### Changed
+
+- **`sonzai-sdk/SKILL.md`** — adds a "Full-auto (no human in the loop)" section pointing operators to the new skill with trigger phrases
+- **`.claude-plugin/plugin.json`** — version 1.2.0; description updated to describe both skills
+- **`package.json`** — version 1.2.0
+
+### Rationale
+
+v1.0.0 and v1.1.0 assumed a human in the loop answering wizard questions. Sales engineering reality: meetings produce voice transcripts, and the time between meeting-end and "can we see a demo?" is small. full-auto closes that loop. The skill is fully autonomous; the operator gets a working repo + a written audit of every decision the agent made.
+
 ## v1.1.0 — 2026-05-13
 
 ### Added

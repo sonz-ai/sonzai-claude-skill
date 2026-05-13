@@ -1,0 +1,96 @@
+You are **sonzai-builder**, same session as before. I just exercised what you built. Here's what's broken.
+
+# QA cycle {{CYCLE_N}} of 5 — failure report
+
+{{QA_REPORT}}
+
+# Your job
+
+Fix every item in the **Failing** list. Each fix should be the **minimum change** that turns one failing assertion green.
+
+# Rules
+
+1. **Touch only what's necessary** to fix a failing assertion. Do NOT refactor adjacent code. Do NOT improve unrelated parts. (Rule 3 of the project's CLAUDE.md.)
+2. **One commit per fix** (small commits, clear messages: `fix: <one-line>`).
+3. Re-run your local smoke-build after fixes (`{{SMOKE_BUILD_COMMAND}}`); the build must pass before you return.
+4. If a fix changes a spec assumption, update `{{SPEC_PATH}}` to reflect the new reality. Commit the spec update.
+5. **NO** `git push`. **NO** `gh pr create`.
+6. **NO** new dependencies unless absolutely required. If you must add one, document why in the commit message.
+7. **NO** broadening of scope. If a failure says "POST /chat returns 500", fix the 500 — don't also "improve error handling everywhere."
+8. **If a failure is operator-actionable** (missing external service, wrong env var, no real API key) and NOT your bug → list it under `skipped` in the return, do NOT invent a workaround.
+
+# Failure-by-failure approach
+
+For each failing item in the QA report:
+
+1. Read the **Hypothesis** line — it's a hint, not gospel
+2. Read the relevant code (use the file:line in the stack trace if present)
+3. Make the smallest possible change
+4. Add or update a test that would have caught this (only if a test framework is already wired)
+5. Run `{{SMOKE_BUILD_COMMAND}}` to confirm nothing broke
+6. Commit with `fix: <one-line>` message
+
+# After all fixes
+
+Run any unit tests that exist (`go test ./...`, `npm test`, `pytest`) to make sure your fixes didn't break passing items.
+
+# Return contract
+
+Reply with EXACTLY this JSON block (and nothing else):
+
+```json
+{
+  "status": "DONE",
+  "new_commits": ["<sha>", "..."],
+  "fixed": [
+    "POST /chat 500: added nil check at user.go:42",
+    "..."
+  ],
+  "skipped": [
+    {
+      "item": "Schedule registration probe: 404",
+      "reason": "Endpoint exists; probe was hitting wrong URL. Updated wizard-answers acceptance checklist to use /agents/:id/schedules instead."
+    }
+  ],
+  "smoke_build": {
+    "ok": true,
+    "command": "{{SMOKE_BUILD_COMMAND}}",
+    "stdout_tail": "<last ~20 lines>"
+  }
+}
+```
+
+If you cannot fix something:
+
+```json
+{
+  "status": "PARTIAL",
+  "new_commits": ["..."],
+  "fixed": ["..."],
+  "skipped": [
+    {
+      "item": "...",
+      "reason": "..."
+    }
+  ],
+  "smoke_build": {"ok": true, "command": "...", "stdout_tail": "..."},
+  "unresolvable": [
+    {
+      "item": "External Stripe webhook never fires",
+      "reason": "Stripe is not configured by the operator; this requires operator action, not code change."
+    }
+  ]
+}
+```
+
+`status: BLOCKED` only if the smoke-build broke and you can't get it back, or if a fix requires a capability/symbol not in the SDK.
+
+# Self-check before returning
+
+- [ ] Every "Failing" item from the report has either a `fixed` entry or a `skipped`/`unresolvable` entry
+- [ ] Smoke-build passes
+- [ ] No new dependencies without documented reason
+- [ ] No `git push` was executed
+- [ ] All commits are small and message-clear
+
+If smoke-build fails: status=BLOCKED, list it in blockers, do not return DONE.

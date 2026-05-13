@@ -30,6 +30,12 @@ The wizard diagnoses what you're building, prescribes the archetype + memory mod
 
 → Read `intake.md`
 
+## Full-auto (no human in the loop)
+
+If the operator has a meeting transcript and wants a working app shipped end-to-end without being prompted for wizard answers, use the **`full-auto` skill** (sibling skill in this plugin). It reads the transcript, derives the wizard answers itself, dispatches a builder subagent that runs this skill, exercises the built app, and feeds failures back until the app works. Bounded 5-cycle loop, zero operator prompts.
+
+Trigger phrases: "build from this transcript" / "go full auto" / "run full-auto" / "/full-auto"
+
 ## Skip the wizard
 
 If the user explicitly says "skip wizard" / "I know what I want" / they're mid-implementation and just need a syntax lookup:
