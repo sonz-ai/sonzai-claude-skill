@@ -1,7 +1,7 @@
 {
   "name": "sonzai-sdk",
-  "version": "1.2.0",
-  "description": "Two skills for Sonzai SDK developers: (1) sonzai-sdk — wizard-driven, prescribes archetype + memory mode + capabilities, drives spec → review → plan. (2) full-auto — autonomous closed-loop: takes a meeting transcript, dispatches a builder subagent, exercises the built app (API + UI), feeds failures back until it works. Covers 7 archetypes, 20+ feature references, 10 decision aids, 9 migration playbooks.",
+  "version": "1.3.0",
+  "description": "Three skills for Sonzai SDK developers: (1) sonzai-sdk — wizard-driven, prescribes archetype + memory mode + capabilities, drives spec → review → plan. (2) full-auto — autonomous closed-loop: takes a meeting transcript, dispatches a builder subagent, exercises the built app (API + UI), feeds failures back until it works. (3) sonzai-internal-staff — gated extension for Sonzai staff dogfooding (opt-in via SONZAI_INTERNAL_STAFF=1 or --sonzai-internal-staff); layers workspace awareness (SDK source + monolith) onto the public skills. Covers 7 archetypes, 20+ feature references, 10 decision aids, 9 migration playbooks.",
   "author": {
     "name": "Sonzai Labs",
     "email": "engineering@sonz.ai",

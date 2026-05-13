@@ -36,6 +36,10 @@ If the operator has a meeting transcript and wants a working app shipped end-to-
 
 Trigger phrases: "build from this transcript" / "go full auto" / "run full-auto" / "/full-auto"
 
+## Sonzai internal staff (gated)
+
+If the operator is Sonzai internal staff and has opted in (`SONZAI_INTERNAL_STAFF=1` env var OR `--sonzai-internal-staff` in the invocation), also load the **`sonzai-internal-staff`** sibling skill. It adds workspace awareness (SDK source at `$SONZAI_WORKSPACE/sonzai-sdk/`, monolith at `$SONZAI_WORKSPACE/sonzai-ai-monolith-ts/`) for dogfooding. Without opt-in: do not load it.
+
 ## Skip the wizard
 
 If the user explicitly says "skip wizard" / "I know what I want" / they're mid-implementation and just need a syntax lookup:

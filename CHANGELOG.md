@@ -2,6 +2,52 @@
 
 All notable changes to `sonzai-claude-skill` are documented here. The project follows [Semantic Versioning](https://semver.org/). Dates are `YYYY-MM-DD`.
 
+## v1.3.0 — 2026-05-13
+
+### Added: `sonzai-internal-staff` skill (gated, internal-only)
+
+Third skill in the plugin: `skills/sonzai-internal-staff/`. Layers Sonzai workspace awareness (SDK source repos + monolith) onto `sonzai-sdk` and `full-auto` for internal dogfooding. **Does not load** unless the operator opts in.
+
+**Triple gate** (all three layered for defense-in-depth):
+
+1. **Soft description gate** — the skill's frontmatter description says "Use ONLY when SONZAI_INTERNAL_STAFF=1 OR --sonzai-internal-staff is in the invocation". Without an opt-in phrase in the operator's prompt or env, the agent won't auto-load it.
+2. **Hard runtime gate** — first section of `SKILL.md` is a STOP gate. The agent runs `echo "$SONZAI_INTERNAL_STAFF"` and checks the invocation for the flag. If neither is present, prints "internal-only, not loaded" and exits without reading the rest.
+3. **Natural path gate** — the skill references `$SONZAI_WORKSPACE/sonzai-sdk/` and `$SONZAI_WORKSPACE/sonzai-ai-monolith-ts/`. External users without these repos hit useful 404s.
+
+**Opt-in mechanisms** (operator activates either):
+
+- Set env var: `export SONZAI_INTERNAL_STAFF=1`
+- Pass flag: `--sonzai-internal-staff` (or `/sonzai-internal-staff`) literally in the invocation
+
+**Files:**
+
+- `SKILL.md` — gate + purpose + cross-refs to public skills + hard rules (no tenant names, no secrets, no monolith pushes)
+- `workspace-pointers.md` — workspace resolution (env var → CWD ancestor walk → `$HOME/code/sonzai/` candidates → fail), SDK source map (`sonzai-python`, `sonzai-typescript`, `sonzai-go`, `sonzai-openclaw`), monolith map (contextengine, platform/api, ai-character-service, deploy), SDK↔monolith request mapping, OpenAPI source-of-truth ordering
+
+**Workspace resolution** — never hardcodes a path. Resolves via:
+
+1. `$SONZAI_WORKSPACE` env var
+2. Walk up from CWD for ancestor containing both `sonzai-sdk/` and `sonzai-ai-monolith-ts/`
+3. Try `$HOME/code/sonzai/`, `$HOME/work/sonzai/`, `$HOME/dev/sonzai/`, `$HOME/src/sonzai/`
+4. None → print resolution instructions, exit
+
+**What it does (after gate passes):**
+
+- Phase 0 (drift check) — also reads the locally generated OpenAPI in `services/platform/api/docs/` and the SDK source for the most-current schema (live API may lag one deploy)
+- Phase 5 (QA loop) — optionally tail local monolith server logs to diagnose failures (read-only)
+- Wizard derivation — verify capability flags against canonical Go source in `services/contextengine/domain/entity/agent.go` instead of just the snapshot
+
+### Changed
+
+- **`sonzai-sdk/SKILL.md`** — adds a "Sonzai internal staff (gated)" section pointing to the new skill
+- **`full-auto/SKILL.md`** — adds "Optional sibling: sonzai-internal-staff" under cross-skill dependencies
+- **`.claude-plugin/plugin.json`** — version 1.3.0; description updated to describe three skills
+- **`package.json`** — version 1.3.0
+
+### Rationale
+
+Sales / engineering staff frequently want to dogfood `full-auto` and the wizard with full server-side context — tracing SDK calls into platform/api handlers, verifying drift against contextengine source, tailing local logs during QA cycles. The public skills must stay tenant-agnostic and free of platform internals. This new skill is the safe place to put internal pointers. The triple gate ensures it stays dormant for external users; the user's quote: "I dont mind open sourcing the sonzai internal staff part because people cant access our codebase anyways, so at least we can dogfood our own skills easier."
+
 ## v1.2.0 — 2026-05-13
 
 ### Added: `full-auto` skill

@@ -58,6 +58,10 @@ The user invoked this skill if any of these match:
 - `superpowers:writing-plans` (builder subagent)
 - `superpowers:subagent-driven-development` (builder subagent for plan execution)
 
+## Optional sibling: sonzai-internal-staff
+
+If `SONZAI_INTERNAL_STAFF=1` env var is set OR the operator's invocation contains `--sonzai-internal-staff`, ALSO load the **`sonzai-internal-staff`** skill before Phase 0. It layers workspace awareness (SDK source + monolith) onto this flow for Sonzai-internal dogfooding. Without opt-in: skip it — `full-auto` runs fully on public sources alone.
+
 ## Optional dependencies (degrades gracefully if absent)
 
 - Browser MCP for UI testing: `mcp__chrome-devtools__*` OR `mcp__playwright__*`

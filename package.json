@@ -1,7 +1,7 @@
 {
   "name": "sonzai-claude-skill",
-  "version": "1.2.0",
-  "description": "Two skills for AI coding agents (Claude Code, Codex, Gemini CLI, Copilot CLI) building on the Sonzai SDK: (1) sonzai-sdk wizard for human-in-the-loop builds, (2) full-auto for autonomous closed-loop builds from a meeting transcript with API + UI verification. Covers 7 archetypes across Python, TypeScript, and Go.",
+  "version": "1.3.0",
+  "description": "Three skills for AI coding agents (Claude Code, Codex, Gemini CLI, Copilot CLI) building on the Sonzai SDK: (1) sonzai-sdk wizard for human-in-the-loop builds, (2) full-auto for autonomous closed-loop builds from a meeting transcript with API + UI verification, (3) sonzai-internal-staff gated extension for Sonzai staff dogfooding. Covers 7 archetypes across Python, TypeScript, and Go.",
   "license": "MIT",
   "homepage": "https://sonz.ai/docs",
   "repository": {
