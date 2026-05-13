@@ -2,6 +2,146 @@
 
 All notable changes to `sonzai-claude-skill` are documented here. The project follows [Semantic Versioning](https://semver.org/). Dates are `YYYY-MM-DD`.
 
+## v1.6.0 — 2026-05-13
+
+### Added: `cto-loop` skill (semi-autonomous, two-gate variant of `full-auto`)
+
+The `sonzai-sdk` plugin now ships THREE public skills (was two). All three are SDK-agnostic, public, and tenant-free.
+
+```
+plugins/sonzai-sdk/skills/
+├── sonzai-sdk/          # interactive wizard → spec + plan (no build)
+├── full-auto/           # autonomous transcript → running app (no operator prompts)
+└── cto-loop/            # NEW — same pipeline + 2 operator gates + interactive tech-stack intake
+```
+
+| Skill | Operator prompts | Output | Use when |
+|---|---|---|---|
+| `sonzai-sdk` | wizard Q&A | spec + plan documents | scoping meeting → spec → plan; no auto-build |
+| `full-auto` | none | running local app + final report | transcript + no human available |
+| `cto-loop` | 2 gates + 7 intake Qs (greenfield) or audit confirm (brownfield) + per-cycle feedback | running local app + final report w/ approval + feedback log | transcript + tech-lead available to review |
+
+### Added: Shared core in `full-auto/` (used by both `full-auto` and `cto-loop`)
+
+The transcript → running-app pipeline now exists once as a complete autonomous flow in `full-auto/`. `cto-loop` is a thin overlay that inserts two operator gates and swaps two phases for interactive variants (tech-stack intake, brownfield audit confirm). Everything else is shared via `../full-auto/<file>.md` references.
+
+New files in `full-auto/`:
+
+- `project-type-detection.md` — greenfield vs brownfield detection
+- `tech-stack-derivation.md` — autonomous greenfield stack derivation (transcript + sensible defaults)
+- `brownfield-audit.md` — autonomous codebase audit
+- `masterplan-assembly.md` — assembles single review-able masterplan doc
+- `version-search.md` — **HARD RULE: always-search-current-state** (no version, install command, docker tag, or library API from training memory)
+- `local-deploy.md` — Dockerfile + docker-compose generation; `docker compose up -d --wait` + healthcheck-aware boot
+- `feedback-iteration.md` — auto-fixer loop on QA failure
+- `subagent-prompts/builder.md`, `fixer.md`, `auditor.md`, `version-checker.md`
+- `templates/dockerfile-{ts,py,go}.template`
+- `templates/docker-compose-{postgres,postgres-redis,stateless}.template`
+- `templates/masterplan.md.template`
+
+Existing files in `full-auto/` were upgraded (transcript-analysis, answer-derivation, builder-dispatch, qa-loop, SKILL.md, pipeline.md, final-report.md.template) to reflect the new pipeline.
+
+New files in `cto-loop/`:
+
+- `SKILL.md` — thin router
+- `pipeline.md` — overlay map showing which phases are shared vs cto-loop-local
+- `tech-stack-intake.md` — interactive 7-question greenfield stack intake (replaces full-auto's autonomous derivation when cto-loop is active)
+- `brownfield-audit.md` — operator-confirm wrapper around full-auto's autonomous auditor
+- `masterplan-gate.md` — Gate A (approve / edit / reject)
+- `cto-review-gate.md` — Gate B (live URL review, approve / feedback / abort)
+- `feedback-iteration.md` — operator-feedback-driven fixer loop (5 cycle hard cap + 1 explicit "one more")
+
+### Added: Always-search-current-state hard rule
+
+A new behavioral rule across all three public skills: no package version, install command, docker image tag, or library API recommendation may come from training memory. Every recommendation must be verified at write-time via:
+
+- `npm view <pkg> version` / `pip index versions <pkg>` / `go list -m -versions <module>` / etc.
+- Docker Hub API for current stable image tags
+- WebFetch of canonical framework docs for install commands
+
+Implementation: dedicated `version-checker` subagent in `full-auto/subagent-prompts/`. The wizard skill also gets a smaller back-port at `sonzai-sdk/references/version-search.md`.
+
+Rationale: training-data lag (often >12 months) was silently propagating stale package versions into every generated scaffold. The skill now refuses to recommend anything time-sensitive without a runtime verification.
+
+### Added: Local docker-compose deploy + functional QA against running app
+
+Both `full-auto` and `cto-loop` now produce a *running* local stack (not just code + a smoke test). After build:
+
+1. Generate `Dockerfile` from per-language template (postgres / postgres+redis / stateless variants)
+2. Resolve image tag placeholders via `version-checker` (no hardcoded versions in templates)
+3. `docker compose up -d --wait`
+4. Run migrations
+5. Functional QA against `http://localhost:<port>` — smoke + archetype-specific checks (auth signup → chat → memory verification for `companion`; routing decision for `guide-router`; etc.)
+6. Fail → fixer subagent → rebuild → re-QA (bounded 5 cycles)
+
+### Added: Greenfield tech-stack intake (7 questions, `cto-loop` only)
+
+When `cto-loop` is invoked on an empty CWD:
+
+```
+Q1. Backend language?            → TypeScript / Python / Go
+Q2. Backend framework?           → top-3 current popular for chosen lang (verified live)
+Q3. Frontend?                    → Next.js / Vite+React / SvelteKit / Astro / api-only / embedded
+Q4. Database?                    → postgres (default if stateful) / mysql / sqlite-dev / no-DB
+Q5. Auth library?                → Clerk / Auth.js / Better-Auth / Lucia / Supabase / custom JWT / no auth
+Q6. ORM (skipped if no DB)?      → Drizzle / Prisma / SQLAlchemy / GORM / sqlc / raw SQL
+Q7. Production deploy target?    → Fly / Railway / Cloud Run / AWS / VPS / on-prem / TBD
+```
+
+Defaults document fallbacks (used in `full-auto`'s autonomous variant). Postgres is NEVER mandatory — Q4 offers "no DB" and that branch skips Q6.
+
+### Added: Brownfield audit (autonomous in `full-auto`, detect-and-confirm in `cto-loop`)
+
+When the operator's CWD has prior signals (`package.json`, `go.mod`, `docker-compose.yml`, source files, etc.):
+
+- The `auditor` subagent reads the existing repo (read-only) and detects: backend lang + framework + version, frontend, database, ORM, auth, test framework, sonzai SDK install status, notable patterns, risks
+- Confidence-scored per layer (`high` / `medium` / `low`)
+- Low-confidence detections become risk entries the builder treats conservatively downstream
+- `full-auto` writes findings to `docs/cto-review/<date>-brownfield-context.md` without confirmation
+- `cto-loop` prints findings as a table and asks the operator to confirm or `fix <row>` each line before proceeding
+
+Brownfield builds **integrate** into the existing repo (never recreate alongside). Hard Rule 7 in both skills.
+
+### Added: Masterplan as a single review-able artifact
+
+Both modes now produce `docs/cto-review/<date>-masterplan.md` covering:
+
+- Client goals (from transcript)
+- Sonzai integration (8 wizard answers + rationales)
+- Tech stack (with verified-at dates)
+- Architecture diagram + service boundaries
+- File structure (NEW vs MODIFY for brownfield)
+- docker-compose plan (services, ports, volumes, env vars)
+- Scope (in/out)
+- Risks
+- (cto-loop) Operator review notes + approval checkbox
+
+In `full-auto` the masterplan is the build's input artifact; the approval section is emitted but never marked. In `cto-loop` Gate A blocks until the operator approves it.
+
+### Removed / replaced
+
+- `full-auto/subagent-prompts/builder-prompt.md.template` → replaced by `builder.md`
+- `full-auto/subagent-prompts/fixer-prompt.md.template` → replaced by `fixer.md`
+- `full-auto/`'s old 6-phase pipeline (drift / ingest / signals / wizard-answers / build / QA / report) → re-numbered as Phase 0a-d + 1-5 to align with `cto-loop`
+
+### Migration from v1.5.0
+
+No action required. Both plugin manifests bump in lockstep (`sonzai-sdk` 1.5.0 → 1.6.0; `sonzai-internal-staff` 1.5.0 → 1.6.0). Existing `full-auto` invocations work — the skill content has expanded, but the trigger phrases and inputs are unchanged. `cto-loop` is purely additive.
+
+To use `cto-loop`:
+
+```bash
+/plugin install sonzai-sdk@sonz-ai     # already installed if you're on v1.5.0
+# then in chat:
+"use cto-loop on this transcript: <paste or path>"
+```
+
+### Architecture notes
+
+This release corrects a v1.5.0 design oversight: docker-compose deploy, version-search, fixer subagents, tech-stack intake, brownfield audit etc. were originally drafted for `cto-loop` only. The user (correctly) pushed back: "CTO loop is just semi-auto (with gates), full-auto should be the exact same thing." Implementation refactored mid-flight to put shared core in `full-auto/`, leaving `cto-loop/` as a 6-file thin overlay (SKILL.md, pipeline.md, tech-stack-intake, brownfield-audit confirm wrapper, two gate files, operator-feedback iteration).
+
+---
+
 ## v1.5.0 — 2026-05-13
 
 ### Breaking: repo split into two plugins (install-time gating)

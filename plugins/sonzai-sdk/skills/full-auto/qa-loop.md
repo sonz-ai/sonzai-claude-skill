@@ -1,199 +1,124 @@
-# QA loop
+# QA loop (Phase 3 — after deploy)
 
-Phase 5: outer session exercises the app the builder built, feeds failures back to the builder, repeats up to 5 cycles. Continuously, no operator prompts.
+After `docker compose up` is healthy and migrations applied, exercise the running app. This is **functional** QA — not unit tests; those are the builder's responsibility.
 
-## Inputs (read these first)
+## Smoke checks (always run)
 
-- `.full-auto/build-summary.json` (from Phase 4)
-- `.full-auto/wizard-answers.md` (acceptance checklist section)
-- The current `cycle_n` counter (starts at 1)
+1. **Root URL responds 2xx:**
+   ```bash
+   curl -sf -o /dev/null -w "%{http_code}" http://localhost:${APP_PORT}/
+   ```
+   Expect: 200 (or 301/302 if root redirects). Anything 4xx/5xx = fail.
 
-## Step 1 — Decide what to start
+2. **Health endpoint** (if app exposes one — most templates here do):
+   ```bash
+   curl -sf http://localhost:${APP_PORT}/health
+   ```
+   Expect: 200 with JSON body containing `ok: true` or similar.
 
-From `build-summary.json`:
+3. **DB reachable** (if DB in stack):
+   ```bash
+   docker compose exec -T db pg_isready -U ${POSTGRES_USER}
+   ```
+   Expect: `accepting connections`.
 
-```jsonc
-"entrypoints": {
-  "backend": "go run ./cmd/server",  // or null if nothing to start
-  "frontend": "npm run dev",          // or null
-  "ports": {"backend": 8080, "frontend": 3000},
-  "env_required": ["SONZAI_API_KEY"]
-}
+4. **App ↔ DB connectivity** (if DB in stack): exercise an endpoint that hits the DB (auth signup, conversation list, etc.). Use `curl` with the appropriate route.
+
+If any smoke check fails: dispatch fixer subagent. Bounded 5 retries before forcing Gate B with "QA failing".
+
+## Archetype-specific functional checks
+
+Based on the masterplan's archetype (Phase 0d Q1), run additional checks. These exercise the Sonzai SDK integration end-to-end.
+
+### companion
+
+1. Create a user via the auth flow (signup endpoint with test email)
+2. Send a chat message via `/api/chat` (or equivalent) with a fixture: `{"message": "hello"}`
+3. Verify response shape: `{"reply": <non-empty string>, "session_id": <uuid>, ...}`
+4. Verify the SDK actually called Sonzai by checking the response is contextual (not a canned message) — if the test response is `"hello"` echoed back, fail
+5. Send a follow-up message in the same session: `{"message": "what did I just say?"}`
+6. Verify the response references the previous message — confirms memory is wired
+
+### guide-router
+
+1. Send an initial message: `{"message": "I need help with X"}`
+2. Verify response includes a routing decision (which specialist to engage)
+3. Verify subsequent messages go to that specialist
+
+### enterprise-assistant
+
+1. Upload a fixture document to the KB endpoint (if KB is in scope)
+2. Query: `{"message": "what does the document say about Y?"}`
+3. Verify response cites the document
+
+### customer-support
+
+1. Send a fixture ticket: `{"message": "my order is broken"}`
+2. Verify response either answers from KB or escalates with `{"escalate": true, "reason": ...}`
+
+### game-npc
+
+1. Send a dialogue event: `{"event": "player_approaches", "context": {...}}`
+2. Verify NPC response includes appropriate state changes
+
+### coach-therapist
+
+1. Send a session-open message
+2. Send 3 follow-up messages
+3. Verify mood / diary state is being tracked (check the appropriate endpoint)
+
+### hybrid-custom
+
+1. Use the smoke checks only — archetype is by definition unknown
+2. Flag in QA report: "hybrid-custom — functional checks must be specified by operator at Gate B"
+
+## QA report
+
+After all checks (smoke + archetype-specific), assemble a QA report in-memory:
+
+```yaml
+qa_report:
+  smoke:
+    root_url:        pass
+    health:          pass
+    db:              pass
+    db_connectivity: pass
+  archetype_companion:
+    auth_signup:     pass
+    chat_basic:      pass
+    chat_memory:     fail (response did not reference previous message)
+  overall:           fail
+  failing_checks:    [archetype_companion.chat_memory]
+  logs_tail: |
+    <last 50 lines of docker compose logs --tail 50>
 ```
 
-**Env preflight:**
-- Check every var in `env_required` is set
-- If any missing AND a real value isn't available to this session → halt the entire run with `.full-auto/BLOCKED.md` ("Cannot run QA — SONZAI_API_KEY missing and no test key available"). This is a hard limit; do NOT mock the API.
-- If a `.env` file exists in `{{TARGET_REPO_PATH}}`, source it before starting servers
+## On failure
 
-If `backend` is null AND `frontend` is null → builder reported nothing to start; halt with BLOCKED ("Builder reported no entrypoints, cannot exercise")
+If `overall: fail`:
 
-## Step 2 — Start servers
+1. Dispatch fixer subagent (see `subagent-prompts/fixer.md`) with:
+   - The QA report
+   - The masterplan path
+   - The failing check description
+   - The relevant logs
+2. Fixer commits its changes
+3. `docker compose up -d --build` (rebuild + restart)
+4. Re-run QA loop from the top (smoke + archetype)
+5. Bounded 5 retries. After that, surface to operator: "QA still failing after 5 fix attempts. Forcing Gate B for your decision." Then proceed to Gate B WITH `qa: failing` in the report.
 
-Use `Bash run_in_background=true`. Run commands FROM inside the target repo's directory.
+## On success
 
-```
-# in target repo dir
-backend_log=.full-auto/qa-cycle-{{cycle_n}}/backend.stdout.log
-mkdir -p $(dirname $backend_log)
-<backend_command> > $backend_log 2>&1 &
-```
+`overall: pass` → save QA report to in-memory state, then:
 
-Same for frontend if present.
+- **`full-auto` mode:** write the final report (`final-report.md.template`) and exit. App keeps running locally; operator owns next steps (push, deploy to prod, tear down).
+- **`cto-loop` mode:** read `../cto-loop/cto-review-gate.md` next (Gate B).
 
-Capture the bash shell-ids the runtime returns. Save them — we'll need them to stop the servers between cycles.
+## Hard rules
 
-## Step 3 — Wait for readiness
-
-Use `Monitor` tool on the background bash shells to stream stdout until you see a readiness signal:
-
-| Stack | Readiness regex |
-|---|---|
-| Go (net/http, Echo, Gin, Chi) | `listening` / `bind` / `:{{port}}` |
-| Node (Express, Elysia, Hono, Fastify) | `listening` / `ready` / `Local:.*http://localhost` |
-| Python (FastAPI, Flask, Django) | `Uvicorn running` / `Running on http` / `started server` |
-| Next.js / Vite | `Local:.*http://localhost` / `ready in` |
-
-If port is taken (`EADDRINUSE` / `address already in use`):
-- Try once more with a free port range (10000-19999), updating the URL we test against
-- If still failing → record as Cycle Failure: "server failed to start: port conflict"
-
-Cap waits at 60 seconds. If no readiness signal in 60s → record as Cycle Failure: "server did not start within 60s; tail of stdout:" + last 20 lines.
-
-## Step 4 — Exercise the backend
-
-For each item in `wizard-answers.md`'s **Acceptance Checklist** that names an HTTP endpoint or SDK call:
-
-### HTTP endpoint items
-```bash
-# example for a chat endpoint
-curl -sS -w '\n%{http_code} %{time_total}s\n' \
-  -X POST "http://localhost:{{port}}/chat" \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer ${SONZAI_API_KEY}" \
-  -d '{"agent_id":"qa-agent","user_id":"qa-user-1","message":"hello"}' \
-  > .full-auto/qa-cycle-{{cycle_n}}/endpoint-chat.log 2>&1
-```
-
-Pass criteria per checklist item:
-- HTTP status as specified (typically 2xx)
-- Response body shape matches what the spec/template says
-- Latency under the spec'd budget (Q6) — measure `%{time_total}` and compare
-
-### Memory-persistence items
-- POST a chat with user_id=`qa-user-1`, content "remember my favorite color is blue"
-- POST a second chat with same user_id, content "what's my favorite color?"
-- Assert: response contains `blue` (loose grep — memory may surface via different phrasings)
-
-### Scheduled-reminder items
-- Don't wait for cron to fire. Instead: assert the schedule was registered (`client.schedules.list` or the equivalent REST endpoint returns a row for this agent_id)
-
-### Shared-memory items (enterprise only)
-- Two different user_ids chat the same agent
-- Fact stored by user A is reachable when user B asks (if sharedMemory=true)
-
-### SDK-call items
-- Run a tiny test script (`.full-auto/qa-cycle-{{cycle_n}}/probe.{lang}`) that does the SDK call and prints the result
-- Compare to expected shape
-
-Aggregate every probe's pass/fail into `.full-auto/qa-cycle-{{cycle_n}}/backend.md`.
-
-## Step 5 — Exercise the frontend (if present)
-
-**Detect browser MCP availability** by inspecting the loaded toolset for tool names starting with `mcp__chrome-devtools__` or `mcp__playwright__`. (You can check by attempting ToolSearch on those names; if no match, the MCP isn't installed.)
-
-### If browser MCP available
-
-For each user-flow in the acceptance checklist that describes a UI interaction:
-
-1. Navigate to `http://localhost:{{frontend_port}}`
-2. Screenshot → save under `.full-auto/qa-cycle-{{cycle_n}}/frontend/<step-name>.png`
-3. Drive the flow:
-   - Click selectors, type into inputs, wait for navigation
-   - After each step: screenshot + capture console errors via DevTools MCP `getConsoleMessages` or equivalent
-4. Final state assertion: text content / URL / state matches what the checklist item demands
-
-Aggregate into `.full-auto/qa-cycle-{{cycle_n}}/frontend.md`.
-
-### If browser MCP NOT available
-
-Skip UI driving. Write into `frontend.md`:
-
-```markdown
-# Frontend (cycle {{cycle_n}})
-
-Browser MCP not detected in this session (looked for: mcp__chrome-devtools__*, mcp__playwright__*).
-
-UI was exercised via the API contract only. Add a browser MCP (e.g., chrome-devtools-mcp) to drive UI tests in future runs.
-
-## Smoke test (curl-only)
-- `GET http://localhost:{{frontend_port}}/` returned: {{HTTP_STATUS}}
-- Body contains: {{key markers from spec, e.g., HTML <title>}}
-```
-
-This is a degraded run, NOT a failure — record it but proceed.
-
-## Step 6 — Aggregate cycle results
-
-Write `.full-auto/qa-cycle-{{cycle_n}}.md`:
-
-```markdown
-# QA cycle {{cycle_n}} of 5
-
-**Built commit**: {{FINAL_BUILDER_SHA}}
-
-## Backend probes
-- ✅ {{N_PASS}} / {{N_TOTAL}}
-
-### Passing
-- POST /chat: 200 in 312ms
-- (etc)
-
-### Failing
-- POST /chat (second user): 500 Internal Server Error
-  - Stdout tail: "...panic: nil pointer dereference at user.go:42"
-  - Hypothesis: missing nil check around user struct
-- Schedule registration probe: 404 (endpoint not found)
-  - Hypothesis: builder forgot to wire client.schedules.create
-
-## Frontend
-{{INLINE_OR_REFERENCE}}
-
-## Decision
-- Failures: {{N_FAIL}}
-- Cycle: {{cycle_n}} of 5
-- Next: {{ "Phase 6 (all pass)" | "re-dispatch builder for fix cycle" | "BLOCKED (cycle 5 reached)" }}
-```
-
-## Step 7 — Decide next
-
-| Condition | Action |
-|---|---|
-| All checklist items pass | Stop servers (kill bash shells), proceed to Phase 6 |
-| Failures exist AND cycle < 5 | Stop servers. Fill `subagent-prompts/fixer-prompt.md.template` with this cycle's report. `SendMessage` to `sonzai-builder`. Wait for return. Increment cycle counter. Re-enter Step 1. |
-| Failures exist AND cycle == 5 | Stop servers. Write `.full-auto/BLOCKED.md` with last cycle report. Exit. |
-
-**Always stop servers between cycles** — the builder may rebuild ports, change addresses, or break startup. Don't carry stale processes between cycles.
-
-To stop: send a kill signal or `pkill -f <command-keyword>` via Bash, OR rely on Monitor's session lifecycle. Confirm port is free before re-starting.
-
-## Failure hypothesis hints
-
-When recording failures, include a short "Hypothesis" line per failure — this saves the builder time during the fix cycle. Hypothesize, don't diagnose deeply; the builder can dive in.
-
-| Error class | Hint to include |
-|---|---|
-| HTTP 500 with stack trace | "stack points at {{file}}:{{line}} — likely {{reading from the trace}}" |
-| HTTP 401/403 | "auth header missing or env not loaded" |
-| HTTP 404 | "endpoint not registered — likely wiring missed in router" |
-| Timeout / no response | "blocking call without timeout, or server not bound to listen address" |
-| Schema mismatch | "response missing field X — likely struct tag or marshal config" |
-| Console error in browser | "uncaught at {{file}}:{{line}} — likely null deref or missing await" |
-
-The fixer prompt asks the builder to address each failure; clear hypotheses cut fix latency.
-
-## When NOT to re-dispatch
-
-- Builder previously returned BLOCKED → don't re-dispatch (exit with BLOCKED)
-- All failures are due to missing env vars / external services the operator must wire (e.g., "Stripe webhook never fires because Stripe is not configured") → record as "operator-action-needed", do NOT ask the builder to fix
-- Failures only on flows the transcript explicitly de-scoped → record as "deferred per transcript scope", do NOT ask the builder to fix
+1. **QA exercises the running app**, not static analysis. `curl` and HTTP requests, not lint.
+2. **Use fixtures, never real user data.** Test emails: `cto-loop-qa-<uuid>@example.com`. Test messages: ephemeral.
+3. **Clean up fixtures.** After QA, delete the test users / messages. If the DB schema doesn't support cascade-delete, leave a note in the QA report.
+4. **Bounded retries.** 5 fixer cycles, then to Gate B with `qa: failing`.
+5. **Don't gate on QA pass.** Even with failing QA, you go to Gate B — but you tell the operator "QA failing" so they can decide.
+6. **No tenant-specific fixtures.** Generic data only.

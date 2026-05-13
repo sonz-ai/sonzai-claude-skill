@@ -30,15 +30,23 @@ The wizard diagnoses what you're building, prescribes the archetype + memory mod
 
 → Read `intake.md`
 
-## Full-auto (no human in the loop)
+## Going beyond the wizard
 
-If the operator has a meeting transcript and wants a working app shipped end-to-end without being prompted for wizard answers, use the **`full-auto` skill** (sibling skill in this plugin). It reads the transcript, derives the wizard answers itself, dispatches a builder subagent that runs this skill, exercises the built app, and feeds failures back until the app works. Bounded 5-cycle loop, zero operator prompts.
+| Operator has... | Wants... | Use |
+|---|---|---|
+| A scoping conversation with stakeholders | Interactive wizard → spec → plan (no build) | this skill (`sonzai-sdk`) |
+| A meeting transcript + no human in loop | Unattended autonomous build → running app | `full-auto` (sibling) |
+| A meeting transcript + tech-lead in loop | Supervised build with 2 gates (masterplan + live-app review) | `cto-loop` (sibling) |
 
-Trigger phrases: "build from this transcript" / "go full auto" / "run full-auto" / "/full-auto"
+Both `full-auto` and `cto-loop` deploy the built app locally with `docker compose` and run functional QA against the running stack. `full-auto` auto-fixes; `cto-loop` lets the tech-lead steer the fix loop via free-text feedback. Both share the same core machinery (tech-stack derivation/intake, brownfield audit, version-search hard rule, builder + fixer subagents).
 
-## Sonzai internal staff (gated)
+Trigger phrases:
+- `full-auto`: "build from this transcript" / "go full auto" / "run full-auto" / "/full-auto"
+- `cto-loop`: "build it and let me review" / "CTO in the loop" / "transcript with two gates"
 
-If the operator is Sonzai internal staff and has opted in (`SONZAI_INTERNAL_STAFF=1` env var OR `--sonzai-internal-staff` in the invocation), also load the **`sonzai-internal-staff`** sibling skill. It adds workspace awareness (SDK source at `$SONZAI_WORKSPACE/sonzai-sdk/`, monolith at `$SONZAI_WORKSPACE/sonzai-ai-monolith-ts/`) for dogfooding. Without opt-in: do not load it.
+## Sonzai internal staff (install-time gated, optional)
+
+If the `sonzai-internal-staff` sibling skill is also installed in this plugin install, load it for additional workspace awareness when the operator is Sonzai staff. The skill is install-time gated by the `sonz-ai` plugin marketplace (`category: internal`), so external users never have it on disk. See that skill's own `SKILL.md` for what it adds.
 
 ## Skip the wizard
 
@@ -53,12 +61,14 @@ If the user explicitly says "skip wizard" / "I know what I want" / they're mid-i
 | Go syntax | `references/go.md` |
 | Raw HTTP → typed SDK | `references/migration-from-http.md` |
 | Errors, 4xx/5xx | `references/troubleshooting.md` |
+| Package version recommendations (any) | `references/version-search.md` |
 
 ## Hard rules
 
 1. **Never expose `SONZAI_API_KEY` to a browser or mobile client.** Server-side only.
 2. **Never guess endpoint names or field names.** Fetch the live OpenAPI spec — see `references/drift-detection.md`.
 3. **Never invent tenant-specific behavior.** This SDK is multi-tenant.
+4. **Always search for current package versions before recommending them.** No `pip install sonzai==0.5.0`, `next@14`, `postgres:14`, or any other version pulled from training memory. See `references/version-search.md` for what to verify and how.
 
 ## Red flags
 

@@ -1,7 +1,7 @@
 {
   "name": "sonzai-claude-skill",
-  "version": "1.5.0",
-  "description": "Two plugins for AI coding agents (Claude Code, Codex, Gemini CLI, Copilot CLI) building on the Sonzai SDK: (1) sonzai-sdk (public) — wizard skill for human-in-the-loop builds + full-auto skill for autonomous closed-loop builds from a meeting transcript with API + UI verification; (2) sonzai-internal-staff (install-time-gated, opt-in) — monolith awareness extension for Sonzai staff dogfooding. Covers 7 archetypes across Python, TypeScript, and Go. Wizard prescribes runtime mode (full-chat vs memory-layer via sessions vs memory-layer via /process) and BYOK as the production posture. v1.5.0 split a single runtime-gated plugin into two install-time-gated plugins so public users no longer get the internal-staff files copied to disk.",
+  "version": "1.6.0",
+  "description": "Two plugins for AI coding agents (Claude Code, Codex, Gemini CLI, Copilot CLI) building on the Sonzai SDK. PUBLIC plugin ships three skills: (1) sonzai-sdk — wizard for human-in-the-loop spec+plan; (2) full-auto — autonomous closed-loop: transcript → tech-stack derivation OR brownfield audit → masterplan → builder subagent (always-search-current-state) → docker-compose deploy → functional QA → auto-fixer; (3) cto-loop — semi-autonomous: same pipeline + two operator gates (masterplan approval + live-app review) + interactive 7-question tech-stack intake + operator-feedback-driven fixer loop. INTERNAL plugin ships sonzai-internal-staff (install-time gated). All three public skills share core infrastructure: version-checker subagent (no version hallucination), builder/fixer/auditor subagents, docker-compose templates for postgres/postgres+redis/stateless deploys. v1.6.0 added cto-loop and moved shared core to full-auto/.",
   "license": "MIT",
   "homepage": "https://sonz.ai/docs",
   "repository": {

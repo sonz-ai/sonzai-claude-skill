@@ -6,14 +6,17 @@ Rules for AI agents (and humans) working inside this repo.
 
 A multi-plugin Claude Code / Codex / Gemini CLI repo that helps other AI agents implement the Sonzai SDK correctly. Two plugins ship from this repo:
 
-- **`plugins/sonzai-sdk/`** — PUBLIC plugin. Anyone can install. Distributed via the `sonz-ai` plugin marketplace and direct symlink. Strictly tenant-agnostic.
+- **`plugins/sonzai-sdk/`** — PUBLIC plugin. Anyone can install. Distributed via the `sonz-ai` plugin marketplace and direct symlink. Strictly tenant-agnostic. Ships three skills:
+  - `sonzai-sdk` — interactive wizard (spec + plan, no build)
+  - `full-auto` — autonomous transcript → running app (docker-compose, QA, auto-fixer)
+  - `cto-loop` — semi-autonomous (full-auto + 2 operator gates + interactive tech-stack intake). Thin overlay on `full-auto/` — shared core lives there.
 - **`plugins/sonzai-internal-staff/`** — INTERNAL plugin. Same repo, separate plugin manifest, install-time gated. Sonzai staff opt in with a second `/plugin install` command. Layers monolith / workspace awareness onto the public plugin.
 
 ## Hard rules
 
 ### 1. No platform internals in `plugins/sonzai-sdk/` — ever
 
-The public plugin runs in users' editors at customer sites. Inside `plugins/sonzai-sdk/skills/` and any future public-plugin skill, never reference:
+The public plugin runs in users' editors at customer sites. Inside `plugins/sonzai-sdk/skills/` (all THREE public skills: `sonzai-sdk` wizard, `full-auto`, `cto-loop`) and any future public-plugin skill, never reference:
 
 - `services/contextengine/` source paths or internal Go modules
 - `services/ai-service/` (TypeScript AI middleware) internals
@@ -53,6 +56,22 @@ This repo follows the superpowers `writing-skills` discipline:
 ### 4. Cross-platform tool-name compatibility
 
 The skill uses Claude Code tool names (`Read`, `Bash`, etc.). When mentioning a tool, name it once; do not write platform-specific branches inside the same reference. If platform divergence becomes necessary, add a `references/copilot-tools.md` / `references/codex-tools.md` style shim, matching how the superpowers plugin handles it.
+
+### 5. Always-search-current-state — no version hallucination
+
+For ALL three public skills: never recommend a specific package version, install command, docker image tag, or library API from training-data memory. Verify at write-time via the appropriate registry (`npm view`, `pip index versions`, `go list -m -versions`, Docker Hub API) or `WebFetch` of canonical docs. Implementation lives in:
+
+- `plugins/sonzai-sdk/skills/full-auto/version-search.md` — full rule + commands
+- `plugins/sonzai-sdk/skills/full-auto/subagent-prompts/version-checker.md` — dedicated subagent
+- `plugins/sonzai-sdk/skills/sonzai-sdk/references/version-search.md` — wizard back-port (smaller)
+
+If you're updating any reference that mentions a specific version, verify it first.
+
+### 6. Shared core in `full-auto/`; `cto-loop/` is a thin overlay
+
+When adding a feature that applies to BOTH `full-auto` and `cto-loop`, put the file in `full-auto/`. `cto-loop` should reference it via `../full-auto/<file>.md`. Only put a file in `cto-loop/` if it's strictly about the gates, the interactive overlays (`tech-stack-intake.md`, `brownfield-audit.md` confirm wrapper), or the operator-feedback fixer variant.
+
+Wrong: adding a new docker-compose template to `cto-loop/templates/`. Right: add it to `full-auto/templates/` and both skills get it.
 
 ## When updating the SDK
 

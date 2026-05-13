@@ -4,10 +4,23 @@ A multi-plugin skill repo for AI coding agents (Claude Code, Codex, Gemini CLI, 
 
 | Plugin | Skills | Audience |
 |---|---|---|
-| **`sonzai-sdk`** (public) | `sonzai-sdk` (wizard) + `full-auto` (autonomous closed-loop) | Any developer using the Sonzai SDK |
+| **`sonzai-sdk`** (public) | `sonzai-sdk` (wizard) + `full-auto` (autonomous) + `cto-loop` (semi-auto with 2 operator gates) | Any developer using the Sonzai SDK |
 | **`sonzai-internal-staff`** (internal-only) | `sonzai-internal-staff` | Sonzai staff with read access to private monolith repos |
 
 The `sonzai-internal-staff` plugin is **install-time gated** — it lives in a separate plugin manifest, so it is never copied to a non-staff disk just because they installed `sonzai-sdk`.
+
+## Which skill should I use?
+
+| If you have... | And you want... | Use |
+|---|---|---|
+| A scoping conversation with stakeholders | Interactive wizard → spec + plan (no build) | **`sonzai-sdk`** |
+| A meeting transcript + no human in the loop | Unattended build → running app, no prompts | **`full-auto`** |
+| A meeting transcript + a tech lead available | Build + 2 operator gates (masterplan + live-app review) | **`cto-loop`** |
+
+`full-auto` and `cto-loop` share the same core machinery (tech-stack derivation/intake, brownfield audit, version-search hard rule, builder + fixer subagents, docker-compose deploy, functional QA loop). The only differences:
+
+- `full-auto` runs end-to-end autonomously; auto-fixer loop on QA failure (bounded 5 cycles).
+- `cto-loop` inserts two gates (masterplan approval + live-app review), swaps autonomous tech-stack derivation for an interactive 7-question intake on greenfield (or a detect-and-confirm audit on brownfield), and replaces the auto-fixer with an operator-feedback-driven fixer (bounded 5 cycles + 1 explicit "one more").
 
 ---
 
@@ -31,18 +44,35 @@ When invoked:
 
 For developers who just want a syntax lookup, a skip-wizard path falls through to the per-language references (`python.md`, `typescript.md`, `go.md`).
 
-### `full-auto` skill (autonomous closed-loop)
+### `full-auto` skill (autonomous, transcript → running app)
 
-Take a meeting transcript or a paste of client requirements, no operator prompts:
+Take a transcript, ship a running local app. Zero operator prompts. Bounded fix loop.
 
-1. **Phase 0** — drift check (same as wizard) + transcript analysis (`transcript-analysis.md`)
-2. **Phase 1** — derives all 8 wizard answers from the transcript (`answer-derivation.md`)
-3. **Phase 2** — dispatches a builder subagent that runs the `sonzai-sdk` wizard end-to-end (`builder-dispatch.md`)
-4. **Phase 3** — receives JSON contract back: commits, spec path, plan path, entrypoints, smoke-build
-5. **Phase 4** — boots the built app (backend + frontend if any) and exercises it (`qa-loop.md`)
-6. **Phase 5** — on QA failure, re-dispatches the builder subagent via `SendMessage` for fixes (bounded 5-cycle loop)
+1. **Pre-flight** — drift check (live OpenAPI), Docker check, `SONZAI_API_KEY` check
+2. **Phase 0a-d** — transcript analysis → project-type detection → tech-stack derivation (greenfield) OR brownfield audit → derive 8 sonzai wizard answers
+3. **Phase 1** — assemble masterplan at `docs/cto-review/<date>-masterplan.md`
+4. **Phase 2** — builder subagent (always-search-current-state hard rule; never hallucinates package versions)
+5. **Phase 3** — generate Dockerfile + `docker-compose.yml` (postgres / postgres+redis / stateless variants); `docker compose up -d --wait`; functional QA against the running app
+6. **Phase 4** — auto-fixer loop on QA failure (bounded 5 cycles)
+7. **Phase 5** — final report at `docs/cto-review/<date>-final-report.md`; live app stays running
 
-Operator owns the push decision — `full-auto` only commits locally.
+Operator owns the push decision — `full-auto` commits locally, never pushes.
+
+### `cto-loop` skill (semi-auto, transcript → running app + 2 gates)
+
+Same pipeline as `full-auto`, with two operator gates inserted and an interactive tech-stack intake on greenfield (instead of autonomous defaults).
+
+1. **Pre-flight** — same checks as full-auto
+2. **Phase 0a-b** — transcript analysis + project-type detection (identical to full-auto)
+3. **Phase 0c** — **interactive 7-question tech-stack intake** (greenfield) OR **detect-and-confirm audit** (brownfield)
+4. **Phase 0d + Phase 1** — derive 8 wizard answers + assemble masterplan
+5. **🚪 Gate A** — operator approves / edits / rejects the masterplan
+6. **Phase 2-3** — build + local deploy + QA (identical to full-auto)
+7. **🚪 Gate B** — operator reviews live app at `http://localhost:<port>` + diff + summary; approves / leaves free-text feedback / aborts
+8. **Phase 4** — operator-feedback fixer loop (bounded 5 cycles + 1 explicit "one more")
+9. **Phase 5** — final report with operator approval reflected
+
+`cto-loop` is a **thin overlay** on `full-auto` — the shared core lives in `full-auto/`, and `cto-loop/` only contains the gate files, interactive tech-stack intake, and operator-feedback fixer loop.
 
 ### `sonzai-internal-staff` skill (internal-only)
 
@@ -61,7 +91,7 @@ Recommended (marketplace):
 /plugin install sonzai-sdk@sonz-ai
 ```
 
-That installs **only the public plugin**. The two public skills (`sonzai-sdk`, `full-auto`) become available; the internal-staff skill is NOT copied.
+That installs **only the public plugin**. The three public skills (`sonzai-sdk`, `full-auto`, `cto-loop`) become available; the internal-staff skill is NOT copied.
 
 Sonzai internal staff (additional, optional):
 
@@ -74,15 +104,18 @@ Set `SONZAI_WORKSPACE` to the dir containing `sonzai-sdk/` and `sonzai-ai-monoli
 Manual install (no marketplace):
 
 ```bash
-# Public plugin
+# Public plugin (3 skills)
 git clone https://github.com/sonz-ai/sonzai-claude-skill ~/sonzai-claude-skill
 ln -s ~/sonzai-claude-skill/plugins/sonzai-sdk/skills/sonzai-sdk      ~/.claude/skills/sonzai-sdk
 ln -s ~/sonzai-claude-skill/plugins/sonzai-sdk/skills/full-auto       ~/.claude/skills/full-auto
+ln -s ~/sonzai-claude-skill/plugins/sonzai-sdk/skills/cto-loop        ~/.claude/skills/cto-loop
 
 # Internal staff (optional, requires monolith access to be useful)
 ln -s ~/sonzai-claude-skill/plugins/sonzai-internal-staff/skills/sonzai-internal-staff \
       ~/.claude/skills/sonzai-internal-staff
 ```
+
+**Note:** `cto-loop` references `../full-auto/` for its shared core, so installing `cto-loop` without `full-auto` will produce broken refs. Always install both (or use the marketplace, which handles this automatically).
 
 ### Codex
 
@@ -103,6 +136,7 @@ Manual:
 git clone https://github.com/sonz-ai/sonzai-claude-skill ~/sonzai-claude-skill
 ln -s ~/sonzai-claude-skill/plugins/sonzai-sdk/skills/sonzai-sdk      ~/.agents/skills/sonzai-sdk
 ln -s ~/sonzai-claude-skill/plugins/sonzai-sdk/skills/full-auto       ~/.agents/skills/full-auto
+ln -s ~/sonzai-claude-skill/plugins/sonzai-sdk/skills/cto-loop        ~/.agents/skills/cto-loop
 # Internal staff (optional):
 ln -s ~/sonzai-claude-skill/plugins/sonzai-internal-staff/skills/sonzai-internal-staff \
       ~/.agents/skills/sonzai-internal-staff
@@ -117,6 +151,7 @@ Per-skill source paths (public):
 ```
 plugins/sonzai-sdk/skills/sonzai-sdk/
 plugins/sonzai-sdk/skills/full-auto/
+plugins/sonzai-sdk/skills/cto-loop/        # references ../full-auto/ for shared core
 ```
 
 Internal-staff (optional):
@@ -148,11 +183,25 @@ sonzai-claude-skill/
 │   │       │   ├── migrations/               # 9 from-X playbooks
 │   │       │   ├── spec-templates/           # wizard output templates
 │   │       │   └── references/               # syntax lookup
-│   │       └── full-auto/                    # autonomous closed-loop skill
-│   │           ├── SKILL.md, pipeline.md, transcript-analysis.md,
-│   │           ├── answer-derivation.md, builder-dispatch.md, qa-loop.md,
-│   │           ├── subagent-prompts/         # builder + fixer prompt templates
-│   │           └── final-report.md.template
+│   │       ├── full-auto/                    # autonomous transcript → running app
+│   │       │   ├── SKILL.md, pipeline.md
+│   │       │   ├── transcript-analysis.md, project-type-detection.md
+│   │       │   ├── tech-stack-derivation.md  # greenfield (autonomous)
+│   │       │   ├── brownfield-audit.md       # autonomous variant
+│   │       │   ├── answer-derivation.md, masterplan-assembly.md
+│   │       │   ├── builder-dispatch.md, local-deploy.md, qa-loop.md
+│   │       │   ├── feedback-iteration.md     # auto-fixer loop
+│   │       │   ├── version-search.md         # HARD RULE: always-search-current-state
+│   │       │   ├── subagent-prompts/         # builder, fixer, auditor, version-checker
+│   │       │   ├── templates/                # Dockerfile + docker-compose templates
+│   │       │   └── final-report.md.template
+│   │       └── cto-loop/                     # semi-auto: full-auto + 2 gates
+│   │           ├── SKILL.md, pipeline.md     # thin overlay; references ../full-auto/
+│   │           ├── tech-stack-intake.md      # interactive 7Q variant
+│   │           ├── brownfield-audit.md       # detect-and-confirm wrapper
+│   │           ├── masterplan-gate.md        # Gate A
+│   │           ├── cto-review-gate.md        # Gate B
+│   │           └── feedback-iteration.md     # operator-driven fixer loop
 │   └── sonzai-internal-staff/                # INTERNAL plugin (opt-in install only)
 │       ├── .claude-plugin/plugin.json
 │       ├── .codex-plugin/plugin.json

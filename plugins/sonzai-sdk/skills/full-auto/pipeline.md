@@ -1,146 +1,198 @@
-# Pipeline
+# Pipeline (autonomous)
 
-Six phases, sequential. Phase 5 is the loop. Each phase reads the previous phase's output.
+Six phases. Phase 4 is the fixer loop. No operator gates — `full-auto` is fully autonomous.
 
-All artifacts live under `.full-auto/` in the current working directory (gitignored — add `.full-auto/` to `.gitignore` at the start of Phase 1).
+For the gated semi-auto variant of this same pipeline, see `../cto-loop/pipeline.md`.
 
----
-
-## Phase 0 — Drift check (REQUIRED)
-
-Fetch the live OpenAPI spec before doing anything else. The committed snapshot in any installed SDK version can lag.
-
-```bash
-mkdir -p .full-auto
-curl -sSfL https://api.sonz.ai/docs/openapi.json -o .full-auto/openapi.live.json
-```
-
-If the fetch fails (network, 4xx, 5xx):
-- Retry once after 5s
-- If still failing → halt, write `.full-auto/BLOCKED.md` with "Could not fetch live OpenAPI — drift check is required, cannot proceed safely"
-
-Path the builder subagent reads later: `.full-auto/openapi.live.json`.
+Artifacts go under `docs/cto-review/<date>-*.md` (committed to the repo, so the final report has an audit trail) and under `.full-auto/` (transient, gitignored — add to `.gitignore` at the start of Phase 0).
 
 ---
 
-## Phase 1 — Ingest transcript
+## Pre-flight
 
-Order of resolution:
+Before Phase 0a:
 
-1. **Arg given** — operator ran `/full-auto path/to/transcript.txt` → read that file
-2. **Prior message** — last operator message contains a multi-line block that looks like a transcript (timestamps, speaker labels, or "client said... we said..." patterns) → use that
-3. **Inline in invocation** — operator's current prompt contains the transcript inline → use that
-4. **None of the above** → HALT — write a one-line reason and exit. Do not improvise.
+1. **Drift check / live OpenAPI fetch:**
+   ```bash
+   mkdir -p .full-auto
+   curl -sSfL https://api.sonz.ai/docs/openapi.json -o .full-auto/openapi.live.json
+   ```
+   Retry once on failure. Two failures → halt + write `.full-auto/BLOCKED.md`.
 
-Persist (copy or write) the transcript to `.full-auto/transcript.txt` so the builder subagent and fix-cycle subagents can re-read it from a stable path.
+2. **Docker check:**
+   ```bash
+   docker --version && docker compose version
+   ```
+   Missing → halt + tell operator to install Docker.
 
-Add `.full-auto/` to `.gitignore` if not already there.
+3. **`SONZAI_API_KEY` check:**
+   ```bash
+   test -n "$SONZAI_API_KEY" || grep -q '^SONZAI_API_KEY=..*' .env 2>/dev/null
+   ```
+   Missing → halt + tell operator to set the key. Autonomous pipeline cannot prompt.
+
+4. **`.gitignore`:** add `.full-auto/` and `.env` if missing.
 
 ---
 
-## Phase 2 — Transcript analysis
+## Phase 0a — Transcript analysis
 
-→ Read `transcript-analysis.md` for signal extraction rules.
+→ Read `transcript-analysis.md`.
 
-Produces `.full-auto/signals.md` containing:
-- Direct-quote evidence for each signal (archetype, integration path, latency, capabilities, brand/persona, scope, deadlines)
-- Inferred Q1-Q7 answers (preview)
-- Ambiguities list (where the transcript is silent)
+Source resolution order:
+1. Arg given (`/full-auto path/to/transcript.txt`) → read that file
+2. Prior message contains a transcript-shaped block → use it
+3. Operator's current prompt has the transcript inline → use it
+4. None of the above → halt
 
-This is purely analytic — no decisions get finalized here. Phase 3 turns these signals into deterministic answers.
+Save to `.full-auto/transcript.txt` for later phases.
+
+Output: in-memory `transcript_analysis` (client goal, archetype hint, scale, capabilities, constraints).
 
 ---
 
-## Phase 3 — Wizard-answer derivation
+## Phase 0b — Project type detection
+
+→ Read `project-type-detection.md`.
+
+Decide: greenfield vs brownfield based on CWD signals (existing manifest, source files, compose, etc.).
+
+Output: `project_type` in {greenfield, brownfield}.
+
+---
+
+## Phase 0c — Tech-stack derivation (greenfield) OR Brownfield audit (brownfield)
+
+Branch on `project_type`:
+
+### Greenfield → `tech-stack-derivation.md`
+
+Derive 7 tech-stack fields autonomously from transcript + sensible defaults. Run `version-checker` subagent to pin current versions / docker tags. **No operator prompts.** Defaults documented in `tech-stack-derivation.md`.
+
+Output: in-memory `tech_stack` with versions + verification date.
+
+### Brownfield → `brownfield-audit.md`
+
+Dispatch auditor subagent (`subagent-prompts/auditor.md`). Reads existing repo files (read-only), produces structured YAML with confidence ratings. Low-confidence detections become risks that the builder downstream treats conservatively.
+
+Output: `docs/cto-review/<date>-brownfield-context.md` (YAML in markdown block).
+
+---
+
+## Phase 0d — Wizard answer derivation
 
 → Read `answer-derivation.md`.
 
-Maps signals → exact answers for the 7 wizard questions in `../sonzai-sdk/intake.md` + archetype-specific follow-ups. For every silent signal, picks the lowest-risk default and **explicitly documents the assumption**.
+Derive the 8 sonzai-sdk wizard answers (archetype, integration_path, runtime_mode, capabilities, brand_persona, proactive, scope, byok_posture) from transcript + tech-stack/audit. Unclear values fall back to documented defaults (autonomous mode); cto-loop surfaces them at Gate A instead.
 
-Output: `.full-auto/wizard-answers.md`
-
-This file is what the builder subagent reads. It contains:
-- Q1-Q7 answers
-- Archetype-specific follow-up answers
-- Capabilities resolved to UpdateCapabilitiesInputBody flag list
-- Target repo path (where the impl will land)
-- Documented assumptions
-- **Acceptance checklist** — what Phase 5 will test against
+Output: in-memory `sonzai_wizard` with rationales.
 
 ---
 
-## Phase 4 — Builder dispatch
+## Phase 1 — Masterplan assembly
 
-→ Read `builder-dispatch.md`.
+→ Read `masterplan-assembly.md` and `templates/masterplan.md.template`.
 
-Dispatch ONE Agent subagent with:
-- `subagent_type: general-purpose`
-- `model: sonnet` (default) or `opus` for guide-router / enterprise / hybrid-custom (more reasoning)
-- `name: "sonzai-builder"` (so we can SendMessage it for fix cycles)
-- Prompt from `subagent-prompts/builder-prompt.md.template`, filled with paths and acceptance checklist
+Combine Phase 0 outputs into a single doc at `docs/cto-review/<date>-masterplan.md`. Every section filled; verification date embedded; risks listed.
 
-The builder reads `wizard-answers.md`, picks the matching archetype from `sonzai-sdk/archetypes/`, reads referenced feature files, fills the spec template, writes the plan, executes the plan via `superpowers:subagent-driven-development`, and commits locally.
-
-The builder returns a **structured JSON summary** (see `builder-dispatch.md` for the schema).
-
-If the builder returns `status: BLOCKED`:
-- Write `.full-auto/BLOCKED.md` with the builder's blocker list
-- Do NOT try to fix what the builder couldn't — exit
-
-If `status: DONE`:
-- Save the JSON to `.full-auto/build-summary.json`
-- Continue to Phase 5
+In `full-auto` mode the approval section is emitted but left unmarked (audit-trail uniformity with `cto-loop`).
 
 ---
 
-## Phase 5 — QA loop (test → fix → repeat)
+## Phase 2 — Build
 
-→ Read `qa-loop.md`.
+→ Read `builder-dispatch.md`. Subagent prompts in `subagent-prompts/builder.md` and `subagent-prompts/version-checker.md`.
 
-The outer session (this session) becomes the tester:
+Dispatch ONE builder subagent (model: sonnet by default, opus for complex archetypes). It:
 
-1. **Read entrypoints** from `.full-auto/build-summary.json`
-2. **Start backend** (and frontend if present) in background via `Bash run_in_background=true`
-3. **Wait for readiness** — Monitor stdout until "listening" / "ready" / port-bound (cap 60s)
-4. **Exercise backend** — curl every endpoint in the acceptance checklist
-5. **Exercise frontend** (if browser MCP available) — drive UI, capture console errors, screenshot key states
-6. **Aggregate failures** to `.full-auto/qa-cycle-N.md`
+1. Reads the masterplan
+2. Scaffolds the project per the file-structure section
+3. Dispatches `version-checker` before writing any manifest (HARD RULE: always-search)
+4. Writes code (backend + frontend if applicable + tests)
+5. Commits locally with `feat:` / `chore:` prefixes
+6. Returns JSON: `{status, commits, entry_files, smoke_command, version_pins, open_questions}`
 
-Decision:
-- All pass → Phase 6
-- Failures AND cycle < 5 → SendMessage to "sonzai-builder" with `subagent-prompts/fixer-prompt.md.template` filled with the QA report. Await new commit SHAs. Re-enter Phase 5 step 2 (servers may need restart).
-- Failures AND cycle == 5 → write `.full-auto/BLOCKED.md`, exit
-
-Cycle counter starts at 1 and increments on each fix iteration.
+Handle `status: needs_context` by re-dispatching with the missing context (filled from in-memory state). Handle `status: blocked` by halting + writing BLOCKED.md.
 
 ---
 
-## Phase 6 — Final report
+## Phase 3 — Local deploy + QA
+
+→ Read `local-deploy.md` then `qa-loop.md`.
+
+### Local deploy
+
+1. Generate Dockerfile from `templates/dockerfile-<lang>.template` (placeholders resolved via `version-checker`)
+2. Generate `docker-compose.yml` from `templates/docker-compose-{postgres,postgres-redis,stateless}.template` (placeholders resolved)
+3. Brownfield: if `docker-compose.yml` already exists, merge carefully; never overwrite
+4. `docker compose up -d --wait`
+5. Run migrations (`drizzle-kit push` / `prisma migrate deploy` / `alembic upgrade head` / etc.)
+
+If boot fails: dispatch fixer (Phase 4) immediately — don't wait for QA. Bounded 3 retries for boot.
+
+### QA
+
+→ `qa-loop.md`. Smoke checks (root URL, /health, DB connectivity) + archetype-specific functional checks (auth signup → chat → memory persistence for `companion`, etc.).
+
+QA failures → Phase 4.
+
+QA passes → Phase 5.
+
+---
+
+## Phase 4 — Feedback iteration (auto-fixer loop)
+
+→ Read `feedback-iteration.md`. Subagent prompt `subagent-prompts/fixer.md`.
+
+When QA fails:
+
+```
+cycle = 0
+while qa.overall == fail and cycle < 5:
+  dispatch fixer with QA report + logs + masterplan
+  fixer commits
+  docker compose up -d --build --wait
+  re-run qa-loop
+  cycle += 1
+```
+
+After 5 cycles: stop; final report says `qa-failing-after-5-fixes`.
+
+If fixer returns `status: blocked`: stop immediately; final report says `fixer-blocked`.
+
+---
+
+## Phase 5 — Final report
 
 → Use `final-report.md.template`.
 
-Writes `.full-auto/REPORT.md` summarizing:
-- Archetype built, integration path, memory mode, capabilities enabled
-- Backend endpoints exercised (passing / total)
-- Frontend flows exercised (passing / total, or "API contract only" if no browser MCP)
-- Number of QA cycles run
-- Documented assumptions (from `wizard-answers.md`)
-- Final commit SHA
-- Operator's next steps (review, set API key, push, PR)
+Write `docs/cto-review/<date>-final-report.md` summarizing:
 
-Then exit. The operator decides if/when to `git push` and `gh pr create`.
+- Archetype, integration path, runtime mode, capabilities
+- Tech stack with verified-at dates
+- Build commits (range)
+- QA outcome (passing / failing-after-5 / fixer-blocked)
+- Auto-derived defaults that were used (so operator sees what was guessed)
+- Risks from brownfield audit (if applicable)
+- Live URL (still running on `docker compose`)
+- Operator's next steps (review, push, deploy to prod)
+
+Then exit. App stays running; operator owns `docker compose down` and the push decision.
 
 ---
 
-## Failure surfaces (where things can halt)
+## Failure surface table
 
 | Phase | Halt condition | Output |
 |---|---|---|
-| 0 | OpenAPI unreachable | `.full-auto/BLOCKED.md` |
-| 1 | No transcript anywhere | one-line halt message |
-| 2 | Transcript is non-Sonzai-shaped (trading bot, payments, etc.) | `.full-auto/BLOCKED.md` with scope reason |
-| 4 | Builder returns BLOCKED | `.full-auto/BLOCKED.md` with builder's blockers |
-| 5 | Cycle 5 reached, still failing | `.full-auto/BLOCKED.md` with last QA report |
-| 5 | Server entrypoint missing from builder summary | `.full-auto/BLOCKED.md` ("builder did not report entrypoints") |
+| Pre-flight | OpenAPI unreachable (twice) | `.full-auto/BLOCKED.md` |
+| Pre-flight | Docker missing | halt with install instructions |
+| Pre-flight | `SONZAI_API_KEY` missing | halt with "set the key, then re-run" |
+| 0a | No transcript anywhere | halt with one-line reason |
+| 0a | Transcript is non-Sonzai-shaped (trading/payments/etc.) | `.full-auto/BLOCKED.md` |
+| 2 | Builder returns `blocked` | `.full-auto/BLOCKED.md` with builder's blocker |
+| 3 | docker compose boot fails after 3 retries | `.full-auto/BLOCKED.md` with logs |
+| 4 | Cycle 5 with QA failing | proceed to Phase 5 with status `qa-failing-after-5-fixes` |
+| 4 | Fixer returns `blocked` | proceed to Phase 5 with status `fixer-blocked` |
 
-In every halt case: do NOT modify the operator's git history beyond local commits already made. Leave the working tree in its current state.
+In every halt: leave the working tree as-is. Do not auto-rollback or auto-tear-down.

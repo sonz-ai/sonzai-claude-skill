@@ -1,7 +1,7 @@
 {
   "name": "sonzai-sdk",
-  "version": "1.5.0",
-  "description": "Two skills for Sonzai SDK developers: (1) sonzai-sdk — wizard-driven; prescribes archetype + memory mode + runtime mode (full-chat vs memory-layer via sessions vs memory-layer via /process) + capabilities; drives spec → review → plan. (2) full-auto — autonomous closed-loop: takes a meeting transcript, dispatches a builder subagent, exercises the built app (API + UI), feeds failures back until it works. Covers 7 archetypes across Python / TypeScript / Go. BYOK is the recommended production posture.",
+  "version": "1.6.0",
+  "description": "Three skills for Sonzai SDK developers: (1) sonzai-sdk — wizard-driven spec + plan; (2) full-auto — autonomous transcript → running-app pipeline (tech-stack derivation OR brownfield audit, masterplan, builder subagent with always-search rule, docker-compose deploy, functional QA, auto-fixer loop, all bounded); (3) cto-loop — same pipeline as full-auto with two operator gates (masterplan approval + live-app review) and an interactive 7-question tech-stack intake. Covers 7 archetypes across Python / TypeScript / Go. BYOK is the recommended production posture. Shared core lives in full-auto/; cto-loop is a thin overlay.",
   "author": {
     "name": "Sonzai Labs",
     "email": "engineering@sonz.ai",
@@ -15,7 +15,9 @@
     "sdk",
     "ai-agents",
     "memory",
-    "personality"
+    "personality",
+    "autonomous-build",
+    "cto-review"
   ],
   "skills": "./skills/"
 }

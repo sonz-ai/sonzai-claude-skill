@@ -1,7 +1,7 @@
 {
   "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
   "name": "sonz-ai",
-  "description": "Sonzai SDK skills for AI coding agents. Wizard-driven builds, autonomous closed-loop builds, and an internal-staff dogfooding companion.",
+  "description": "Sonzai SDK skills for AI coding agents. Wizard-driven builds (sonzai-sdk), autonomous transcript-to-app builds (full-auto), tech-lead-reviewed builds with 2 gates (cto-loop), and an internal-staff dogfooding companion.",
   "owner": {
     "name": "Sonzai Labs",
     "email": "engineering@sonz.ai",
@@ -10,7 +10,7 @@
   "plugins": [
     {
       "name": "sonzai-sdk",
-      "description": "Wizard + autonomous builder for the Sonzai SDK. Prescribes archetype, memory mode, runtime mode (full-chat vs memory-layer), BYOK posture, and capabilities — then drives spec → review → plan. full-auto runs the same pipeline closed-loop from a meeting transcript with API + UI verification.",
+      "description": "Three skills for Sonzai SDK developers: wizard (sonzai-sdk: human-in-the-loop spec + plan), autonomous closed-loop (full-auto: transcript → running app, docker-compose deploy, functional QA + auto-fixer, zero operator prompts), and semi-autonomous (cto-loop: same pipeline + 2 operator gates + interactive 7-question tech-stack intake + operator-feedback fixer loop). Shared core: always-search-current-state hard rule, builder/fixer/auditor/version-checker subagents, postgres/postgres+redis/stateless docker-compose templates.",
       "author": {
         "name": "Sonzai Labs",
         "url": "https://sonz.ai"

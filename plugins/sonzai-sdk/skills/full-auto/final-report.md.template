@@ -1,132 +1,209 @@
-# full-auto report
+# Final report — ${MODE}
 
-**Generated**: {{ISO_TIMESTAMP}}
-**Transcript source**: `{{TRANSCRIPT_PATH}}`
-**Target repo**: `{{TARGET_REPO_PATH}}`
-**Final commit**: `{{FINAL_SHA}}`
+> ${MODE} = `full-auto` (autonomous) or `cto-loop` (operator-gated)
 
----
-
-## What was built
-
-- **Archetype**: `{{ARCHETYPE}}`
-- **Integration path**: `{{INTEGRATION_PATH}}`
-- **Language**: `{{LANG}}`
-- **Memory mode**: `{{MEMORY_MODE}}` (Q6 latency budget: `{{Q6}}`)
-- **Personality**: `{{Q4}}` ({{PERSONALITY_NOTE}})
-- **Proactive features**: `{{Q5}}`
-- **User identification**: `{{Q3}}`
-
-### Capabilities enabled
-{{CAPABILITIES_TABLE}}
-
-### Tier-gated capabilities (not enabled — operator must upgrade tier)
-{{TIER_GATED_LIST_OR_NONE}}
+**Generated:** ${ISO_TIMESTAMP}
+**Transcript source:** `${TRANSCRIPT_PATH}`
+**Target repo:** `${TARGET_REPO_PATH}`
+**Project type:** ${PROJECT_TYPE}  (greenfield | brownfield)
+**Wall-clock:** ${WALL_CLOCK}
 
 ---
 
-## What was tested
+## 1. Outcome
 
-### Backend
-- **Endpoints exercised**: {{N_BACKEND_TOTAL}}
-- **Passing**: {{N_BACKEND_PASS}} / {{N_BACKEND_TOTAL}}
-- **Final cycle log**: `.full-auto/qa-cycle-{{FINAL_CYCLE_N}}.md`
+**Status:** ${OUTCOME}
 
-### Frontend
-- **Mode**: {{ "Full UI exercised via {{BROWSER_MCP}}" | "API contract only (no browser MCP)" }}
-- **Flows exercised**: {{N_FRONTEND_TOTAL}}
-- **Passing**: {{N_FRONTEND_PASS}} / {{N_FRONTEND_TOTAL}}
-- **Screenshots** (if browser MCP): `.full-auto/qa-cycle-{{FINAL_CYCLE_N}}/frontend/`
+<!-- one of:
+       success                          (QA passing, operator approved [cto-loop] / silent [full-auto])
+       qa-failing-after-5-fixes         (full-auto only — auto-fixer exhausted)
+       fixer-blocked                    (full-auto only — fixer returned blocked)
+       aborted-by-operator              (cto-loop only — operator typed abort)
+       hard-stop-at-6-cycles            (cto-loop only — feedback loop ran out)
+-->
 
-### QA cycles
-- **Total cycles run**: {{N_CYCLES}} of 5 max
-- **Per-cycle reports**:
-{{QA_CYCLE_LINKS_AS_BULLETS}}
+**Live app:** ${APP_URL} (docker-compose is still running; `docker compose down` to stop it)
 
 ---
 
-## Documented assumptions
+## 2. Sonzai integration
 
-These were made because the transcript was silent on each point. Operator may override before deploying.
+| # | Field | Value | Source |
+|---|---|---|---|
+| 1 | Archetype | ${WIZARD_ARCHETYPE} | ${WIZARD_ARCHETYPE_SOURCE} |
+| 2 | Integration path | ${WIZARD_INTEGRATION_PATH} | ${WIZARD_INTEGRATION_SOURCE} |
+| 3 | Runtime mode | ${WIZARD_RUNTIME_MODE} | ${WIZARD_RUNTIME_SOURCE} |
+| 4 | Capabilities | ${WIZARD_CAPABILITIES} | ${WIZARD_CAPABILITIES_SOURCE} |
+| 5 | Brand / persona | ${WIZARD_BRAND_PERSONA} | ${WIZARD_BRAND_SOURCE} |
+| 6 | Proactive | ${WIZARD_PROACTIVE} | ${WIZARD_PROACTIVE_SOURCE} |
+| 7 | Scope (surfaces) | ${WIZARD_SCOPE} | ${WIZARD_SCOPE_SOURCE} |
+| 8 | BYOK posture | ${WIZARD_BYOK} | ${WIZARD_BYOK_SOURCE} |
 
-{{ASSUMPTIONS_LIST_NUMBERED}}
+`Source` column shows where each answer came from: `transcript` / `default` / `operator (Gate A)` / `operator (intake Qn)`.
 
 ---
 
-## Out-of-scope mentions in the transcript
+## 3. Tech stack
 
-The transcript mentioned these but they fall outside Sonzai SDK scope. Operator should plan separately.
+(${STACK_SOURCE} — autonomous derivation in `full-auto`; interactive 7-question intake in `cto-loop`)
 
-{{OOS_LIST_OR_NONE}}
+| Layer | Choice | Version | Verified |
+|---|---|---|---|
+| Backend language | ${STACK_BACKEND_LANG} | — | ${VERIFIED_AT} |
+| Backend framework | ${STACK_BACKEND_FRAMEWORK} | v${STACK_BACKEND_FRAMEWORK_VERSION} | ${VERIFIED_AT} |
+| Frontend | ${STACK_FRONTEND} | v${STACK_FRONTEND_VERSION} | ${VERIFIED_AT} |
+| Database | ${STACK_DB} | ${STACK_DB_IMAGE_TAG} | ${VERIFIED_AT} |
+| ORM | ${STACK_ORM} | v${STACK_ORM_VERSION} | ${VERIFIED_AT} |
+| Auth | ${STACK_AUTH} | v${STACK_AUTH_VERSION} | ${VERIFIED_AT} |
+| Production target | ${STACK_DEPLOY_TARGET} | — | — |
+
+All versions resolved via `version-checker` subagent at run-time (always-search rule). Operator should re-verify if running this report past `${VERIFIED_AT} + ~30 days`.
 
 ---
 
-## Operator next steps
+## 4. Brownfield audit findings (if applicable)
 
-1. **Review the spec**: `{{TARGET_REPO_PATH}}/{{SPEC_PATH}}`
-2. **Review the plan**: `{{TARGET_REPO_PATH}}/{{PLAN_PATH}}`
-3. **Set the API key**:
+${BROWNFIELD_AUDIT_TABLE_OR_NA}
+
+<!-- N/A for greenfield. For brownfield, print the confirmed audit YAML table here -->
+
+---
+
+## 5. Build summary
+
+- **Commits:** ${COMMIT_RANGE} (${COMMIT_COUNT} commits)
+- **Files created:** ${FILES_NEW_COUNT}
+- **Files modified:** ${FILES_MODIFIED_COUNT}
+- **Builder model:** ${BUILDER_MODEL}
+- **Builder duration:** ${BUILDER_DURATION}
+
+Key entry points:
+${ENTRY_FILES_LIST}
+
+---
+
+## 6. Local deploy
+
+- **docker-compose template used:** ${COMPOSE_TEMPLATE}  (postgres / postgres-redis / stateless)
+- **Services running:** ${SERVICES_RUNNING}
+- **Healthcheck status:** ${HEALTHCHECK_STATUS}
+- **Migrations applied:** ${MIGRATIONS_APPLIED}
+
+---
+
+## 7. QA results
+
+**Smoke checks:**
+${SMOKE_CHECK_TABLE}
+
+**Archetype-specific functional checks (${WIZARD_ARCHETYPE}):**
+${ARCHETYPE_CHECK_TABLE}
+
+**Overall:** ${QA_OVERALL}  (passing | failing-after-5-fixes)
+
+If failing: see `${FAILING_CHECKS}` for the specific assertions still red.
+
+---
+
+## 8. Fix-loop summary
+
+${FIX_LOOP_SECTION}
+
+<!-- For full-auto:
+       auto_fix_cycles_used: N of 5
+       fixes_applied: [list]
+       remaining_failing: [list]
+
+     For cto-loop (operator-feedback variant):
+       operator_cycles_used: N of 5 (+1 if "one more" was used)
+       feedback_per_cycle:
+         - cycle 1: <operator text> → <fix description>
+         - cycle 2: <operator text> → <fix description>
+         ...
+       approval_cycle: N (if approved)
+-->
+
+---
+
+## 9. Defaults that were used (transparency)
+
+Per the always-search rule and the autonomous derivation, these defaults filled in for things the transcript was silent on:
+
+${DEFAULTS_USED_LIST}
+
+If any of these don't match your intent, edit the relevant code and rebuild before pushing.
+
+---
+
+## 10. Risks identified
+
+From masterplan + brownfield audit + builder report:
+
+${RISKS_LIST}
+
+If empty: `(no risks identified — but operator should verify the live app behavior before pushing)`.
+
+---
+
+## 11. Out-of-scope mentions
+
+The transcript mentioned these but they fell outside the Sonzai SDK scope. Plan separately:
+
+${OUT_OF_SCOPE_LIST_OR_NONE}
+
+---
+
+## 12. Operator's next steps
+
+1. **Review the running app at** ${APP_URL}
+2. **Review the masterplan:** `docs/cto-review/${DATE}-masterplan.md`
+3. **Review the diff:** `git log ${BASE_SHA}..HEAD` and `git diff ${BASE_SHA}..HEAD`
+4. **Verify `.env`** has all required values (esp. `SONZAI_API_KEY`)
+5. **Push when ready:**
    ```bash
-   cp {{TARGET_REPO_PATH}}/.env.example {{TARGET_REPO_PATH}}/.env
-   # edit .env to set SONZAI_API_KEY=<your key>
-   ```
-4. **Run locally** (same commands QA used):
-   - Backend: `{{BACKEND_COMMAND}}`
-   - Frontend (if present): `{{FRONTEND_COMMAND}}`
-5. **Push when ready**:
-   ```bash
-   cd {{TARGET_REPO_PATH}}
-   git remote add origin <your-remote>
    git push -u origin main
+   # or create a PR:
+   gh pr create --title "<your title>" --body "See docs/cto-review/${DATE}-final-report.md"
    ```
-6. **Open a PR when ready** (if the target is a fork / shared repo):
+6. **Tear down local stack when done:**
    ```bash
-   gh pr create --title "{{ARCHETYPE}} Sonzai integration (full-auto)" --body "Generated by full-auto from transcript. See docs/superpowers/specs/ for the design."
+   docker compose down -v   # -v removes volumes (delete DB data)
    ```
+7. **Deploy to production** when ready — `${MODE}` does NOT deploy remotely; that's your call.
 
 ---
 
-## Decisions worth a second look
-
-These are the highest-leverage decisions full-auto made. Verify before going to production:
-
-- **Memory mode** ({{MEMORY_MODE}}) — async means context lags one turn behind facts. Make sure this matches your UX expectations.
-- **Capabilities** — paid surfaces. Confirm billing tier covers what's enabled.
-- **Personality** ({{Q4}}) — if `brand-locked`, drift still runs server-side; you just suppress it. Monitor `agents.personality.get_recent_shifts` if drift bothers you.
-- **User identification** ({{Q3}}) — switching later is non-trivial. Re-confirm with your auth setup.
-
----
-
-## Build artifacts inventory
+## 13. Artifacts inventory
 
 ```
-{{TARGET_REPO_PATH}}/
-├── docs/superpowers/specs/{{SPEC_FILENAME}}
-├── docs/superpowers/plans/{{PLAN_FILENAME}}
-├── .env.example
-├── .gitignore (includes .env, .full-auto/)
-└── ... source files ...
+${TARGET_REPO_PATH}/
+├── docs/cto-review/${DATE}-masterplan.md          # masterplan (Gate A artifact in cto-loop; build input in full-auto)
+├── docs/cto-review/${DATE}-final-report.md        # this file
+├── docs/cto-review/${DATE}-brownfield-context.md  # if brownfield
+├── docs/cto-review/${DATE}-feedback-log.md        # if cto-loop with feedback cycles
+├── Dockerfile
+├── docker-compose.yml
+├── .env.example                                    # keys only, no values
+├── .gitignore                                      # includes .env and .full-auto/
+└── ... source files per masterplan §5 ...
 
-.full-auto/
-├── transcript.txt              # input transcript
-├── openapi.live.json           # drift artifact
-├── signals.md                  # Phase 2 output
-├── wizard-answers.md           # Phase 3 output
-├── build-summary.json          # Phase 4 output
-├── qa-cycle-1.md ... qa-cycle-N.md   # Phase 5 per-cycle reports
-├── qa-cycle-N/                 # per-cycle logs, screenshots, probe outputs
-└── REPORT.md                   # this file
+.full-auto/                                         # transient, gitignored
+├── transcript.txt
+├── openapi.live.json
+└── ...
 ```
-
-The `.full-auto/` directory is gitignored. Keep it locally for audit, or delete after operator review.
 
 ---
 
-## Run metadata
+## 14. Run metadata
 
-- **full-auto version**: {{FULL_AUTO_VERSION}}
-- **sonzai-sdk skill version**: {{SONZAI_SDK_VERSION}}
-- **OpenAPI snapshot fetched at**: {{OPENAPI_FETCHED_AT}}
-- **Total wall-clock**: {{WALL_CLOCK_DURATION}}
-- **Builder model**: {{BUILDER_MODEL}}
-- **Browser MCP used**: {{BROWSER_MCP_OR_NONE}}
+- **Mode:** ${MODE}
+- **cto-loop / full-auto version:** ${SKILL_VERSION}
+- **sonzai-claude-skill repo version:** ${REPO_VERSION}
+- **OpenAPI snapshot fetched at:** ${OPENAPI_FETCHED_AT}
+- **Verified-at date:** ${VERIFIED_AT}
+- **Browser MCP used:** ${BROWSER_MCP_OR_NONE}
+
+---
+
+*Generated by ${MODE}. Do not edit this file — it's an audit-trail artifact. Regenerate by re-running the skill.*

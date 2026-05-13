@@ -1,129 +1,101 @@
-# Builder dispatch
+# Builder dispatch (Phase 2)
 
-Phase 4: dispatch one Agent subagent that does the actual build, and keep its name reachable for the fix-loop in Phase 5.
+After masterplan-assembly writes the masterplan doc, dispatch a builder subagent to execute it. Use the `Agent` tool with `subagent_type: general-purpose`.
 
-## One subagent, kept alive across cycles
+## When to dispatch
 
-We name the subagent `sonzai-builder` so Phase 5 can `SendMessage` it for fixes without losing context. Building from scratch each cycle wastes tokens.
+- **`full-auto` mode:** directly after `masterplan-assembly.md` finishes writing the file.
+- **`cto-loop` mode:** after `../cto-loop/masterplan-gate.md` returns `approve`.
 
-**Agent call (Phase 4):**
+The dispatch logic below is identical in both modes.
+
+## Inputs to provide
+
+The subagent has no context from this conversation. Provide everything explicitly:
+
+1. **Masterplan path** — absolute path to `docs/cto-review/<date>-masterplan.md`. Subagent must READ this file first.
+2. **System prompt** — content of `subagent-prompts/builder.md` (the builder rules)
+3. **Operator's CWD** — where the builder writes
+4. **Always-search rule** — re-state it inline in the dispatch prompt (belt + suspenders — the system prompt also has it)
+
+## Dispatch prompt template
+
+```
+You are a builder subagent for `cto-loop`. Implement the project described in:
+
+  ${MASTERPLAN_PATH}
+
+You MUST:
+1. Read the masterplan file in full FIRST, before any edits.
+2. Follow your system prompt rules (see `subagent-prompts/builder.md`).
+3. CRITICAL: never write a package version, install command, or docker image tag from your training memory.
+   Before writing ANY manifest (package.json, requirements.txt, go.mod, Dockerfile, docker-compose.yml),
+   run the version-checker subagent (see `subagent-prompts/version-checker.md`) to get current values.
+4. Commit each logical unit of work as you go (`git add` + `git commit -m`).
+   - Conventional commit prefix: `feat:` / `fix:` / `chore:` / `docs:`
+   - Co-author line: `Co-Authored-By: Claude Code (cto-loop) <noreply@anthropic.com>`
+5. Do NOT `git push`. Do NOT deploy to remote infra. Local commits + local files only.
+6. Return when done. Reply with:
+   ```
+   {
+     "status": "done" | "blocked" | "needs_context",
+     "commits": ["sha1", "sha2", ...],
+     "entry_files": ["src/server.ts", "docker-compose.yml", ...],
+     "smoke_command": "docker compose up -d --wait",
+     "open_questions": [...],
+     "blocker": "<if blocked, what stopped you>"
+   }
+   ```
+
+Operator's CWD: ${OPERATOR_CWD}
+Project type: ${PROJECT_TYPE}  <!-- greenfield | brownfield -->
+
+If brownfield, ALSO read the audit context:
+  ${BROWNFIELD_CONTEXT_PATH}
+And follow Hard Rule 7: integrate, don't recreate.
+
+Now: read the masterplan and begin.
+```
+
+## Handling builder return states
+
+- **`done`** → proceed to `local-deploy.md` (Phase 3). Capture the JSON output to in-memory state.
+- **`blocked`** → print the blocker to operator. Ask: "Builder blocked: <blocker>. Reply with `unblock <txt>` (I'll re-dispatch with this context) or `abort`." Bound at 3 unblock cycles.
+- **`needs_context`** → builder hit something not specified in the masterplan. Print the missing-context message. Either auto-fill from in-memory state (preferred) or ask operator if it's a real ambiguity. Re-dispatch.
+
+## Model choice for the builder
+
+Use a capable model (Sonnet or Opus). The builder writes code across multiple files; this is not a haiku-class task.
 
 ```
 Agent({
-  name: "sonzai-builder",
-  description: "Sonzai SDK end-to-end builder",
+  description: "Builder for cto-loop project",
   subagent_type: "general-purpose",
-  model: "sonnet",  // or "opus" — see Model selection
-  prompt: <contents of subagent-prompts/builder-prompt.md.template with placeholders filled>
+  model: "sonnet",   // or "opus" for complex multi-service projects
+  prompt: <the dispatch prompt above>
 })
 ```
 
-**Fix-cycle re-dispatch (Phase 5):**
+(Per the always-search rule, you may want to bump to opus if the masterplan involves a stack you're less confident about — the model upgrade reduces hallucination risk further, in addition to version-checker.)
+
+## Brownfield handling
+
+When `project_type == brownfield`, the dispatch prompt MUST include:
 
 ```
-SendMessage({
-  to: "sonzai-builder",
-  message: <contents of subagent-prompts/fixer-prompt.md.template with QA report inlined>
-})
+You are integrating into an existing repo. Read every file the masterplan's "file structure" section marks as MODIFY *before* changing it. Do NOT delete or rename files the operator didn't explicitly approve. If a section of the masterplan conflicts with what's actually in the repo (e.g., schema already exists), prefer the existing repo and flag in `open_questions`.
 ```
 
-## Model selection
+This prevents the builder from steamrolling existing patterns.
 
-| Archetype | Model | Reason |
-|---|---|---|
-| companion, coach-therapist | sonnet | Mostly mechanical wiring |
-| customer-support, game-npc | sonnet | Standard SDK use |
-| enterprise-assistant | opus | Multi-user coordination, KB scoping require judgment |
-| guide-router | opus | Routing logic + N specialists need design taste |
-| hybrid-custom | opus | Highest design surface |
+## Hard rules
 
-Never haiku (per `feedback_subagent_models`).
+1. **One builder subagent per Phase 2 invocation.** No parallel implementers — they conflict on file writes.
+2. **Always-search rule propagates.** Builder must invoke version-checker before any manifest write — this is enforced via the system prompt AND repeated inline in the dispatch.
+3. **No remote git ops.** Builder commits locally; never pushes.
+4. **Builder cannot dispatch sub-subagents** for general work — only `version-checker` for version queries. Keeps the dispatch tree shallow.
+5. **Builder return is JSON or escalation.** If it returns a freeform message instead of the JSON shape, re-dispatch with "your previous reply didn't follow the return format; please return JSON only."
 
-## Prompt template
+## Handoff
 
-→ Read `subagent-prompts/builder-prompt.md.template`
-
-Placeholders to fill from `wizard-answers.md`:
-
-| Placeholder | Source |
-|---|---|
-| `{{WIZARD_ANSWERS_PATH}}` | always `.full-auto/wizard-answers.md` |
-| `{{TRANSCRIPT_PATH}}` | always `.full-auto/transcript.txt` |
-| `{{DRIFT_ARTIFACT_PATH}}` | always `.full-auto/openapi.live.json` |
-| `{{TARGET_REPO_PATH}}` | from wizard-answers Target section |
-| `{{LANG}}` | from wizard-answers Target section |
-| `{{ARCHETYPE}}` | from wizard-answers Q2 |
-| `{{INTEGRATION_PATH}}` | from wizard-answers Q7 |
-| `{{ACCEPTANCE_CHECKLIST}}` | full copy of wizard-answers Acceptance Checklist |
-| `{{SKILL_REPO_PATH}}` | absolute path to this repo so the builder can read sonzai-sdk archetypes/features. Either the operator's clone, or the plugin install dir |
-
-The builder needs to find `skills/sonzai-sdk/archetypes/{{ARCHETYPE}}.md` etc. Resolution order:
-
-1. If running inside the operator's clone of `sonzai-claude-skill`, use that absolute path
-2. Else use the plugin cache (typically `~/.claude*/plugins/cache/.../sonzai-claude-skill/skills/sonzai-sdk/`)
-3. Pass the resolved absolute path to the builder via `{{SKILL_REPO_PATH}}` — don't make the builder guess
-
-## What the builder does
-
-The builder prompt encodes this workflow (read the template for the exact instructions):
-
-1. `cd` to target repo (or `git init` if greenfield)
-2. Read `{{WIZARD_ANSWERS_PATH}}` end to end
-3. Read `{{SKILL_REPO_PATH}}/skills/sonzai-sdk/archetypes/{{ARCHETYPE}}.md` end to end
-4. Read every feature file referenced in that archetype's Section 5
-5. Read the spec template matching Q1 (greenfield vs existing-codebase)
-6. Fill the spec template → save to `docs/superpowers/specs/YYYY-MM-DD-{{ARCHETYPE}}-design.md`. Commit.
-7. Invoke `superpowers:writing-plans` to produce `docs/superpowers/plans/YYYY-MM-DD-{{ARCHETYPE}}-plan.md`. Commit.
-8. Invoke `superpowers:subagent-driven-development` to execute the plan task-by-task. Commit per task.
-9. Smoke-build locally (language-appropriate command)
-10. Return the JSON contract below
-
-## Return contract (builder → full-auto)
-
-The builder's final message MUST be a single fenced JSON block (no prose around it):
-
-```json
-{
-  "status": "DONE",
-  "commits": ["<sha>", "<sha>", "..."],
-  "spec_path": "docs/superpowers/specs/2026-05-13-companion-design.md",
-  "plan_path": "docs/superpowers/plans/2026-05-13-companion-plan.md",
-  "entrypoints": {
-    "backend": "go run ./cmd/server",
-    "frontend": null,
-    "ports": {"backend": 8080, "frontend": null},
-    "env_required": ["SONZAI_API_KEY"]
-  },
-  "smoke_build": {"ok": true, "command": "go build ./...", "stdout_tail": "..."},
-  "blockers": []
-}
-```
-
-`status` is `"DONE"` or `"BLOCKED"`. If `BLOCKED`, populate `blockers` with one string per blocker.
-
-`entrypoints.frontend` is `null` if no frontend was built. `ports.frontend` is null if frontend is null.
-
-`env_required` lists env vars the operator needs to set before Phase 5 testing.
-
-Save the parsed JSON to `.full-auto/build-summary.json`.
-
-## Failure handling
-
-| Builder return | full-auto action |
-|---|---|
-| `status: DONE`, valid JSON | proceed to Phase 5 |
-| `status: BLOCKED` | write `.full-auto/BLOCKED.md` with builder's `blockers`; exit |
-| Malformed JSON / non-JSON return | retry once with explicit "Respond with ONLY the JSON block, no prose." If still bad → BLOCKED with reason "Builder failed to produce machine-readable return after retry" |
-| Builder times out / errors | BLOCKED; do not re-dispatch (something's wrong with the env, not the prompt) |
-
-## Pre-flight check before dispatching
-
-Before the Agent call:
-
-1. `.full-auto/wizard-answers.md` exists and is non-empty
-2. `.full-auto/openapi.live.json` exists and parses as JSON
-3. `.full-auto/transcript.txt` exists
-4. `{{SKILL_REPO_PATH}}/skills/sonzai-sdk/archetypes/{{ARCHETYPE}}.md` is readable
-5. `{{TARGET_REPO_PATH}}` either doesn't exist (greenfield, builder will mkdir) OR is a git repo OR is empty
-
-If any check fails, halt — write the missing item to `.full-auto/BLOCKED.md`. Do NOT dispatch a builder that can't possibly succeed.
+On `status: done`, save the builder JSON to in-memory state and read `local-deploy.md` next.
