@@ -26,6 +26,8 @@ A character living inside a game, talking to many players. NPCs have personality
 | Decision | Value | Why |
 |---|---|---|
 | `memory_mode` | `async` | Game chat is interactive; TTFC matters |
+| Runtime mode (Q8) | **B — full-chat with explicit sessions** | Per-session tool injection (swap toolsets between quests / scenes / dialogue trees) is the killer feature. `sessions.start` → `sessions.set_tools` → `sessions.turn` per dialogue step → `sessions.end` on scene change. A works but you lose explicit boundaries. See `decisions/runtime-mode.md`. |
+| LLM provider (production) | **BYOK** or Custom LLM | Tight per-game model control; BYOK lets you pick the cheapest model that hits your tone target. Custom LLM if you fine-tuned on game-specific dialogue. See `decisions/byok-vs-customllm.md`. |
 | Personality drift | on (default) | NPCs evolve with their assigned players — feels alive |
 | `shared_memory` | off | Each player's relationship with the NPC is private |
 | `wisdom` | on (default) | Cross-player patterns without identifying anyone |

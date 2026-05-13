@@ -4,6 +4,8 @@
 **Date:** {{date}}
 **Archetype:** {{archetype}}
 **Language:** {{language}}
+**Runtime mode (Q8):** {{A — full-chat | B — full-chat + sessions | C — memory-via-sessions | D — memory-via-process}} (see `decisions/runtime-mode.md`)
+**LLM provider (production):** {{BYOK: <provider> | Custom LLM: <endpoint> | Platform default — DEV/EVAL ONLY}} (see `decisions/byok-vs-customllm.md`)
 **Migration source:** {{Mem0 / LangChain / Letta / Zep / OpenAI Assistants / Character.AI / custom JSON / none — pure addition}}
 
 ---
@@ -12,10 +14,10 @@
 
 | Layer | Current | Target | Migration playbook |
 |---|---|---|---|
-| Chat handler | {{e.g. OpenAI raw / Assistants API / LangChain ConversationChain}} | Sonzai `agents.chat` or `agents.sessions.start` | `migrations/{{source}}.md` |
+| Chat handler | {{e.g. OpenAI raw / Assistants API / LangChain ConversationChain}} | {{mode A: replace with Sonzai `agents.chat`; mode B: replace with `sessions.start/turn/end`; mode C: keep your LLM call, push transcripts via `agents.process` inside `sessions.start/end`; mode D: keep your LLM call, push events via `agents.process` only}} | `migrations/{{source}}.md` |
 | Memory | {{Mem0 / Zep / Letta / Pinecone / messages table / none}} | Sonzai memory (sessions + facts) | `migrations/{{source}}.md` |
 | Personality | {{system prompts in code / config / DB}} | Sonzai `personality_prompt` or `generate_and_create` description | `decisions/generation-vs-manual-create.md` |
-| LLM provider | {{OpenAI direct / Anthropic / Gemini / mixed}} | Sonzai (platform default / BYOK / Custom LLM) | `decisions/byok-vs-customllm.md` |
+| LLM provider | {{OpenAI direct / Anthropic / Gemini / mixed}} | {{mode A/B: Sonzai with BYOK; mode C/D: keep your provider, Sonzai never sees the chat LLM call}} | `decisions/byok-vs-customllm.md` |
 | KB / RAG | {{Pinecone / Chroma / Weaviate / none}} | Sonzai `client.knowledge` | `features/knowledge-base.md` |
 | Proactive | {{cron / Celery / BullMQ / Temporal / none}} | Sonzai `client.schedules` / `agents.scheduleWakeup` | `features/proactive.md` |
 | Webhooks | {{existing receivers / none}} | Sonzai `client.webhooks` | `features/webhooks.md` |

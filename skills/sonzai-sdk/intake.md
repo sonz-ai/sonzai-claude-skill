@@ -31,6 +31,11 @@ Before asking anything, scan the workspace for signals. If a signal is present, 
 | User prompt contains "Claude Desktop / Cursor / ChatGPT / Claude Code MCP / VS Code MCP" | `install path = MCP` — load `features/mcp-integration.md` ahead of wizard |
 | User prompt contains "OpenClaw / openclaw / `@sonzai-labs/openclaw-context`" | `install path = OpenClaw` — load `features/openclaw-integration.md` ahead of wizard |
 | `~/.cursor/mcp.json` or `.vscode/mcp.json` or `~/.openclaw/openclaw.json` present | install path inferred per above |
+| Existing repo has chat handler calling `openai` / `anthropic` / `gemini` / local LLM endpoint | `runtime_mode hint = memory-layer (C or D)` — confirm: do you want to keep your LLM and use Sonzai for memory only? |
+| Existing repo has no chat handler / greenfield | `runtime_mode hint = full-chat (A)` (default) |
+| User prompt contains "memory only" / "just want memory" / "our LLM" / "already using GPT-4 / Claude" | `runtime_mode hint = memory-layer` — confirm C (with sessions) vs D (no sessions) |
+| User prompt contains "ingest emails" / "doc memory" / "telemetry to memory" / "no chat surface" | `runtime_mode hint = D` (/process only) |
+| User prompt contains "per-session tools" / "tool swap" / "deferred turn" / "long ticket" | `runtime_mode hint = B` (sessions) |
 
 ---
 
@@ -101,6 +106,23 @@ Ask in order, **skipping any answered by inference**. Each question's options ar
 - **OpenClaw plugin** (`@sonzai-labs/openclaw-context`) — Sonzai as the `contextEngine` slot. Load `features/openclaw-integration.md`. Same archetypes; agent provisioning via wizard or B2B SDK.
 
 Skip if inferred from workspace.
+
+### Q8 — Runtime mode
+
+> "Who calls the chat LLM — Sonzai or you?"
+
+The biggest single architectural decision. Read `decisions/runtime-mode.md` for full detail.
+
+- **A. full-chat** (recommended) — `agents.chat` / `chatStream` / `chatAsync`. Sonzai owns the chat LLM call; one SDK call does context build → LLM → response → memory. Default for ~80% of builds.
+- **B. full-chat with explicit sessions** — `sessions.start` → `sessions.turn` → `sessions.end`. Sonzai owns the chat LLM, you own the session lifecycle. Use when you need per-session tools, deferred turns, or end-of-session hooks.
+- **C. memory-layer via sessions** — `sessions.start` → `/process` → `sessions.end`. **You** call your own LLM; Sonzai handles memory + session boundaries. Use when you already have an LLM stack and want Sonzai as the memory layer.
+- **D. memory-layer via /process only** — `agents.process` per event. **You** call your own LLM (or no LLM at all — ingest emails, doc reads, telemetry). No session lifecycle.
+
+**Production posture for A and B**: use **BYOK** (your own provider key) or **Custom LLM** (your own endpoint). Platform credit is for development and evaluation only — see `decisions/byok-vs-customllm.md`. The wizard records this as a sub-decision in the spec.
+
+Default if ambiguous: **A**.
+
+Skip if inferred from workspace (e.g., repo already has chat handler calling another LLM → likely C or D).
 
 ---
 

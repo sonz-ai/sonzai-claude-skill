@@ -4,6 +4,8 @@
 **Date:** {{date}}
 **Archetype:** {{archetype}}
 **Language:** {{language}}
+**Runtime mode (Q8):** {{A — full-chat | B — full-chat + sessions | C — memory-via-sessions | D — memory-via-process}} (see `decisions/runtime-mode.md`)
+**LLM provider (production):** {{Platform default — DEV/EVAL ONLY | BYOK: <provider> | Custom LLM: <endpoint>}} (see `decisions/byok-vs-customllm.md`)
 
 ---
 
@@ -13,7 +15,7 @@
 
 ## 2. Architecture summary
 
-{{2-3 sentence summary of agent topology + per-turn flow}}
+{{2-3 sentence summary of agent topology + per-turn flow. For modes C/D, explicitly note who calls the chat LLM and how transcripts flow into Sonzai memory.}}
 
 ## 3. Agents
 
@@ -34,7 +36,7 @@ For each row above, include the `agents.create` or `generate_and_create` call yo
 
 | Where | What |
 |---|---|
-| Chat handler | {{server endpoint that calls agents.chat / session.turn}} |
+| Chat handler | {{mode A: agents.chat / chatStream; mode B: sessions.start → sessions.turn → sessions.end; mode C: your own LLM call + agents.process within sessions; mode D: agents.process per event, no chat surface}} |
 | Tool dispatch | {{where you handle side_effects.external_tool_calls}} |
 | Webhook receiver | {{your /webhook/sonzai handler with HMAC verify, if applicable}} |
 | Scheduled jobs | {{cron/scheduler config calling client.schedules.create}} |

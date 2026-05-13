@@ -69,6 +69,26 @@ Resolves memory_mode:
 ### Q7 — Integration path
 Direct map from signals' integration-path hint. If silent → `typescript-sdk` (broadest reach for greenfield demos).
 
+### Q8 — Runtime mode
+Direct map from signals' runtime-mode hint (transcript-analysis.md section 6b). Resolution rules:
+
+- Existing repo's chat handler calls another LLM AND silent on "memory only" → confirm by checking if the operator wants to keep it (default: **C** if Q1=existing AND chat handler exists; otherwise A)
+- Multiple modes plausible → tie-break order: **A > B > D > C** (A is the default; D for non-chat ingestion is more common than C in greenfield)
+- Voice / real-time signals → **A** with `memory_mode=async`, document this in capabilities
+- Game NPC archetype + no contrary signal → **B** (per `archetypes/game-npc.md`)
+- All other archetypes default to **A** unless transcript explicitly says BYO-LLM
+
+### Q8a — LLM provider posture (sub-decision for modes A and B only)
+For modes C and D, this is skipped (operator runs their own LLM independently).
+
+For A and B:
+- BYOK trigger words in signals → **BYOK** with the specified provider (or default to `openai` if provider unstated)
+- Custom LLM trigger words (fine-tuned, on-prem, internal endpoint) → **Custom LLM**
+- Prototype/MVP/demo signals AND no production scale → platform default + document "switch to BYOK before production" assumption
+- **Production-bound (deadline mentioned, "going live", "real users", "compliance")** + silent on provider → **BYOK with `openai` as starter provider**; document the assumption
+
+Default if ambiguous: BYOK with `openai`. The default favors production posture because shipping defaults matter; the wizard can downgrade to platform default if explicitly noted.
+
 ---
 
 ## Archetype-specific follow-ups
@@ -221,6 +241,8 @@ Examples per archetype:
 - **Q5** (proactive): `{{Q5}}`
 - **Q6** (latency): `{{Q6}}` → `memory_mode: {{MEMORY_MODE}}`
 - **Q7** (integration): `{{Q7}}`
+- **Q8** (runtime mode): `{{Q8}}` (A=full-chat / B=full-chat+sessions / C=memory-via-sessions / D=memory-via-process)
+- **Q8a** (LLM provider, prod): `{{Q8A}}` (BYOK:<provider> / Custom LLM:<endpoint> / platform-default DEV-ONLY)
 
 ## Archetype follow-ups ({{Q2}})
 {{FOLLOWUPS_AS_BULLETS}}
@@ -270,3 +292,5 @@ Before writing `wizard-answers.md`, verify:
 - Every Acceptance Checklist item is mechanically verifiable (a curl, a script, a screenshot)
 - Target repo path is absolute or unambiguous relative to CWD
 - No tenant-specific names (Razer, Eragon, etc.) leaked into the spec
+- **Runtime mode (Q8) is consistent with the archetype's prescribed default unless transcript overrides it explicitly**
+- **LLM provider posture for modes A/B is BYOK or Custom LLM unless transcript clearly says prototype/MVP/eval-only**

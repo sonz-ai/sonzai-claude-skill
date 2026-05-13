@@ -28,6 +28,8 @@ A wellness coach or journaling companion for long, infrequent sessions. Every fa
 | Decision | Value | Why |
 |---|---|---|
 | `memory_mode` | `sync` | Every fact lands same-turn — can't afford to lose one mid-session |
+| Runtime mode (Q8) | **A — full-chat** (with optional **D** side flow) | Long chat sessions use A. If users also have a non-chat diary intake (mood-only check-ins, journaling without coach reply), layer mode D (`agents.process`) on the same agent for that side channel. See `decisions/runtime-mode.md`. |
+| LLM provider (production) | **BYOK** or Custom LLM | Platform credit is dev/eval only. Compliance-sensitive coaches often pick Custom LLM with an internal endpoint. See `decisions/byok-vs-customllm.md`. |
 | Personality drift | on but slow (via prompt shaping) | Evolves with the relationship without surprising the user |
 | `shared_memory` | off | Per-user privacy; never share across users |
 | `wisdom` | on (default, k-anonymized) | Cross-user patterns without identifying anyone |

@@ -26,6 +26,8 @@ One agent serving N team members. Learns from each person's interactions, surfac
 | Decision | Value | Why |
 |---|---|---|
 | `memory_mode` | `sync` (default) | Compliance — every retrieval lands in record same turn |
+| Runtime mode (Q8) | **A** (default) or **C** (existing internal chat infra) | Most enterprises start at A. Pick C (memory-layer via sessions, with your own LLM) when you already have an internal LLM stack — Anthropic/OpenAI contracts, on-prem inference — that you don't want to replace. See `decisions/runtime-mode.md`. |
+| LLM provider (production) | **BYOK** (often required) or Custom LLM | Compliance regimes typically mandate provider-region isolation; BYOK with the right provider region is the answer. Custom LLM with an internal endpoint if external inference is prohibited. See `decisions/byok-vs-customllm.md`. |
 | Personality | brand-locked via prompt shaping | Consistent voice across team; no per-user drift surprise |
 | `shared_memory` | `on` | Cross-user attributed facts (the whole point) |
 | `wisdom` | `on` (required precondition for `shared_memory`) | K-anonymized cross-user patterns |

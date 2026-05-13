@@ -54,6 +54,21 @@ Walk through each named archetype's Section 2 (Prescribed stack) and pull rows t
 | Power-user mode | enterprise-assistant | upgraded to sync memory + KB access |
 ```
 
+### Step 2.5 — Pick a runtime mode
+
+Hybrid stacks force an explicit runtime-mode choice (Q8). Document which mode each phase / user-type uses:
+
+| If your dominant pattern is... | Default runtime mode |
+|---|---|
+| Companion-shaped chat | **A** (full-chat) |
+| Game-NPC with per-scene tool injection | **B** (sessions) |
+| Existing internal LLM, want Sonzai memory | **C** (memory-via-sessions) or **D** (memory-via-process) |
+| Multi-tenant SaaS where archetypes differ per tenant | One mode per tenant, declared in tenant config — usually all **A** unless a tenant brought their own LLM |
+
+**LLM provider for production**: **BYOK** or Custom LLM across the board (platform credit is dev/eval only). See `decisions/byok-vs-customllm.md`. Multi-tenant hybrids should configure BYOK **per project** so each tenant's billing/rate-limits isolate.
+
+See `decisions/runtime-mode.md` for the full mode reference.
+
 ### Step 3 — Resolve conflicts
 
 When two source archetypes disagree on a capability:

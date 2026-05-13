@@ -26,6 +26,8 @@ A customer-facing support agent grounded in product/policy knowledge. Answers fr
 | Decision | Value | Why |
 |---|---|---|
 | `memory_mode` | `sync` | Compliance — every retrieval in record same turn |
+| Runtime mode (Q8) | **A** (default) or **B** (per-ticket session) | A for stateless support. Switch to B when each ticket has an explicit lifecycle (open → escalate → close) — sessions bracket the ticket and consolidation fires on close. See `decisions/runtime-mode.md`. |
+| LLM provider (production) | **BYOK** | Customer-data routing should isolate at your provider; compliance/audit cleaner with BYOK. See `decisions/byok-vs-customllm.md`. |
 | Personality | brand-locked via prompt | Consistent CS voice; no per-customer drift |
 | `shared_memory` | `on` | CS team learns from each other's tickets |
 | `wisdom` | `on` (required for shared_memory) | K-anonymized cross-customer patterns |

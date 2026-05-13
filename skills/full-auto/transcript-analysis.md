@@ -81,6 +81,30 @@ Tools (custom function calling) is NOT a capability flag — it's a feature. Loo
 | Both above | `both` |
 | Neither | `none` |
 
+### 6b. Runtime mode (Q8 — who calls the chat LLM?)
+
+| Trigger | Maps to Q8 |
+|---|---|
+| "we want a chatbot" / "AI talks to user" / "agent responds" / silent | **A** (full-chat — default) |
+| "voice-first" / "real-time conversation" / "sub-second" | **A** (with `memory_mode=async`) |
+| "per-session tools" / "tool swap" / "deferred turn" / "long ticket lifecycle" / "scene-based" / "quest-bound" | **B** (full-chat with explicit sessions) |
+| "we have our own LLM" / "already using GPT-4 / Claude / Anthropic / OpenAI" / "want memory layer only" / "use Sonzai for memory" + "session" | **C** (memory-via-sessions) |
+| "we have our own LLM" + no session signal, OR "ingest emails" / "doc memory" / "passive learning" / "no chat surface" / "telemetry to memory" / "calendar events" | **D** (memory-via-process only) |
+
+If multiple signals match, prefer the most explicit. Default when ambiguous: **A**.
+
+### 6c. LLM provider posture (production sub-config of A/B)
+
+For modes A and B only — C and D run their own LLM independent of Sonzai.
+
+| Trigger | Maps to |
+|---|---|
+| "production", "going live", "scale", "real users", "compliance", "SOC2", "audit" | **BYOK** (recommended for production) |
+| "fine-tuned model", "internal model", "on-prem", "self-hosted", "vLLM", "llama.cpp" | **Custom LLM** |
+| "prototype", "MVP", "demo", "evaluation", silent on production | platform default (dev/eval only — note this in spec) |
+
+If transcript says nothing about provider but the project is clearly production-bound (deadline, scale, compliance), pick BYOK and document the assumption. Platform credit is never the production default per `decisions/byok-vs-customllm.md`.
+
 ### 7. Scope / deadlines
 
 | Trigger | Capture as constraint |
@@ -134,6 +158,8 @@ Write to `.full-auto/signals.md`:
 - Q5: scheduled-reminders
 - Q6: <500ms
 - Q7: go-sdk
+- Q8: A (full-chat — default; transcript didn't mention BYO LLM or memory-only)
+- LLM provider: BYOK (production-bound MVP; platform credit is dev/eval only)
 
 ## Ambiguities (Phase 3 will pick safe defaults)
 - Number of agents per user: silent → assume 1 (per-user agent, since drift+companion)

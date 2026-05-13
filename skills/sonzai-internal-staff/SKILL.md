@@ -26,7 +26,7 @@ If the gate check fails (neither signal present):
 
 > Print to the operator: "`sonzai-internal-staff` is internal-only and not loaded — opt in by setting `SONZAI_INTERNAL_STAFF=1` or passing `--sonzai-internal-staff`. For public use, see `sonzai-sdk` (wizard) or `full-auto` (autonomous)."
 
-Then exit. Do not read the rest of this file. Do not act on its contents. Do not load `monolith-pointers.md` or any other file in this skill directory.
+Then exit. Do not read the rest of this file. Do not act on its contents. Do not load `workspace-pointers.md` or any other file in this skill directory.
 
 If the gate check passes, continue.
 

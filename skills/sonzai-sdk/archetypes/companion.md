@@ -26,6 +26,8 @@ A persistent AI companion that one user owns and that evolves with them. Memory 
 | Decision | Value | Why |
 |---|---|---|
 | `memory_mode` | `async` | TTFC matters; companion chat is interactive |
+| Runtime mode (Q8) | **A — full-chat** | Chat-first product; `agents.chat` / `chatStream` gives the whole pipeline in one call. See `decisions/runtime-mode.md`. |
+| LLM provider (production) | **BYOK** or Custom LLM | Platform credit is dev/eval only; production should use your own key. See `decisions/byok-vs-customllm.md`. |
 | Personality drift | on (default — automatic) | The whole point: rapport that compounds (SOTOPIA s30 lift) |
 | Per-user personality overlay | on (default — automatic) | Each user sees a different version of the agent |
 | `shared_memory` | off | 1:1 — sharing is a privacy bug |

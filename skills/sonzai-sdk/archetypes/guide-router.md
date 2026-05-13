@@ -23,7 +23,9 @@ An intake **guide** agent profiles the user via conversation, scores them on a p
 
 ## 2. Prescribed stack
 
-This archetype has **two different stacks** — one for the guide, one for the specialists.
+This archetype has **two different stacks** — one for the guide, one for the specialists. Both default to **runtime mode A — full-chat** (`agents.chat` / `chatStream`). Sessions add overhead without value here: the guide is short-lived, each specialist is a fresh chat agent. See `decisions/runtime-mode.md`.
+
+**LLM provider (production for both)**: **BYOK** or Custom LLM. Many guide-router products run high call volume against a small set of specialist personalities; BYOK gives rate-limit isolation per specialist. Platform credit is dev/eval only. See `decisions/byok-vs-customllm.md`.
 
 ### Guide agent (intake only)
 

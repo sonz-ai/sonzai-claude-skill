@@ -2,6 +2,74 @@
 
 All notable changes to `sonzai-claude-skill` are documented here. The project follows [Semantic Versioning](https://semver.org/). Dates are `YYYY-MM-DD`.
 
+## v1.4.0 — 2026-05-13
+
+### Added: Q8 (Runtime mode) — the wizard's biggest architectural decision
+
+The wizard now asks **who calls the chat LLM — Sonzai or you?** Four modes, each verified against the live SDK source (`sonzai-go`, `sonzai-typescript`, `sonzai-python`) and the live OpenAPI:
+
+- **A. full-chat** (recommended default) — `agents.chat` / `chatStream` / `chatAsync`. Sonzai orchestrates context build → LLM call → response → memory consolidation in one round trip. ~80% of builds default here.
+- **B. full-chat with explicit sessions** — `sessions.start` → `sessions.turn` → `sessions.end`. Sonzai owns the chat LLM; you own the session lifecycle. Use when you need per-session tool injection (game NPCs swapping toolsets between scenes), deferred-turn semantics, or end-of-session consolidation hooks.
+- **C. memory-layer via sessions** — `sessions.start` → `agents.process` → `sessions.end`. **You** call your own LLM; Sonzai handles memory + session boundaries. Use when you already have an LLM stack (Anthropic, OpenAI, vLLM, internal) you don't want to replace.
+- **D. memory-layer via /process only** — `agents.process` per event. No session lifecycle. Use for non-chat ingestion: email reads, doc memory, telemetry, passive learning surfaces.
+
+**Verification:** every endpoint name and method shape grepped against the three SDK source repos + live OpenAPI. Notable findings:
+- `sessions.turn()` does invoke the chat LLM (has `provider` / `model` fields). Sessions are NOT a BYO-LLM mode — they're an explicit lifecycle wrapper around modes A or C.
+- `agents.process()` (POST `/api/v1/agents/{id}/process`) is the BYO-LLM ingestion path. Returns `MemoriesCreated`, `FactsExtracted`, `SideEffects` — no assistant reply.
+- BYOK is NOT a separate runtime mode; it's a sub-configuration of A and B.
+
+### Added: `decisions/runtime-mode.md`
+
+Full decision aid with per-language code samples (Python / TypeScript / Go) for all four modes, latency comparison, capability implications table, billing posture per mode, and a quick-picker matrix.
+
+### Changed: BYOK is now the recommended production posture
+
+Updated `decisions/byok-vs-customllm.md`:
+
+- **Production**: BYOK (or Custom LLM). Provides rate-limit isolation, cleaner audit, provider-region compliance, separates customer billing.
+- **Platform default**: dev / eval / prototyping only. Convenient for getting started but routes all token cost through Sonzai's billing and shares platform-wide rate limits.
+- Picker table reordered to lead with BYOK for any production scenario.
+
+### Changed: every archetype playbook now prescribes a default runtime mode
+
+Each of the 7 archetype playbooks gained two rows in its "Prescribed stack" table:
+
+| Archetype | Default runtime mode | LLM provider (production) |
+|---|---|---|
+| companion | **A** | BYOK or Custom LLM |
+| coach-therapist | **A** (with optional **D** for diary side flow) | BYOK or Custom LLM |
+| customer-support | **A** (default) or **B** (per-ticket session lifecycle) | BYOK |
+| enterprise-assistant | **A** (default) or **C** (existing internal chat infra) | BYOK (often required) or Custom LLM |
+| game-npc | **B** (per-session tool swap is the killer feature) | BYOK or Custom LLM |
+| guide-router | **A** (both guide and specialists; sessions add overhead) | BYOK |
+| hybrid-custom | depends on dominant pattern; explicit per-tenant for multi-tenant | BYOK |
+
+### Changed: `intake.md`
+
+- **Q8 added** between Q7 and Section 3 (archetype follow-ups). Four-option fork (A/B/C/D) plus a production-posture note pointing at BYOK.
+- **Section 1 (pre-question inference) expanded** with 4 new signals: existing chat handler in repo → memory-layer mode; "we have our own LLM" → C/D; "ingest emails / no chat" → D; "per-session tools" → B.
+
+### Changed: spec templates
+
+- `spec-templates/archetype-spec.md.template` — top-of-doc fields now include **Runtime mode (Q8)** and **LLM provider (production)**. Integration-points table's Chat handler row now distinguishes mode A/B/C/D wiring.
+- `spec-templates/existing-codebase-spec.md.template` — same two top-of-doc fields. Incumbent-systems table's Chat handler and LLM provider rows now describe the per-mode migration target.
+
+### Changed: full-auto pipeline
+
+- `full-auto/transcript-analysis.md` — added signal categories **6b (Runtime mode)** and **6c (LLM provider posture)**. 5+ trigger phrases per Q8 option; explicit defaults when transcript is silent.
+- `full-auto/answer-derivation.md` — added Q8 and Q8a derivation rules. Tie-break order: A > B > D > C. Production-bound defaults to BYOK with `openai` as starter provider. Self-check now verifies Q8 ↔ archetype consistency and BYOK posture for modes A/B.
+
+### Rationale
+
+The wizard previously stopped at Q7 (which SDK language?) and assumed everyone was using mode A. That mismatched reality:
+
+- Enterprise customers with existing LLM contracts wanted mode C and were getting mode-A recommendations
+- Game NPC builders needed mode B for tool injection but the wizard didn't surface it
+- Data-ingestion verticals (email memory, doc ingest) didn't fit any chat-shaped recommendation at all — they need mode D
+- Production users were being implicitly told to ship on platform credit, which is wrong — BYOK is the right posture for anyone past prototyping
+
+This release closes those gaps with one new wizard question, one new decision aid, archetype defaults, spec-template fields, and full-auto signal extraction.
+
 ## v1.3.0 — 2026-05-13
 
 ### Added: `sonzai-internal-staff` skill (gated, internal-only)
