@@ -88,6 +88,6 @@ If your incumbent has audit obligations (HIPAA, SOC2), confirm Sonzai's audit tr
 
 - `existing-codebase-audit.md` — the audit that identified the incumbent
 - `features/priming.md` — bulk import surface
-- `features/memory.md` (covered in references/python.md etc.) — bulk_create_facts
+- `references/python.md` / `references/typescript.md` / `references/go.md` — memory surface (`agents.memory.bulk_create_facts`, `agents.memory.search`, etc.)
 - `decisions/byok-vs-customllm.md` — LLM provider migration
 - All `migrations/*.md` source-specific playbooks

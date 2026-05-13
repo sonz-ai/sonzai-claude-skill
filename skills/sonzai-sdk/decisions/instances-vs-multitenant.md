@@ -48,4 +48,4 @@ description: Use when deciding whether to use instances (sharded deploys of the 
 - `archetypes/enterprise-assistant.md` — typical single-project (one team)
 - `archetypes/customer-support.md` — multi-tenant variant uses separate projects per business customer
 - `archetypes/hybrid-custom.md` — multi-tenant SaaS is the canonical hybrid case
-- `features/projects.md` — project management (if you need to programmatically create projects per tenant)
+- `references/python.md` / `references/typescript.md` — `client.projects` surface (programmatic project management for multi-tenant onboarding)

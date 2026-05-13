@@ -336,5 +336,5 @@ After Q2 picks `coach-therapist`, the wizard asks:
 - `features/priming.md` — intake priming details
 - `features/agent-insights.md` — diary, mood, goals API
 - `features/proactive.md` — weekly schedule setup
-- `features/sessions-vs-conversations.md` — see decisions/sessions-vs-conversations.md (use sessions, not chat)
+- `decisions/sessions-vs-conversations.md` — use sessions, not chat, for this archetype
 - `archetypes/companion.md` — adjacent archetype; coach is a more rigorous variant

@@ -348,4 +348,4 @@ Atomic steps the wizard writes into `sonzai-implementation-plan.md`:
 - `features/generation.md` — agent generation surface
 - `features/custom-tools.md` — registering `record_personality_result`
 - `features/custom-states.md` — assessment storage details
-- `features/sessions-vs-conversations.md` — see `decisions/sessions-vs-conversations.md` for which API to use per phase
+- `decisions/sessions-vs-conversations.md` — which API to use per phase

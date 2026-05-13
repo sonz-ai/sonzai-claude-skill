@@ -94,7 +94,7 @@ Tool names starting with `sonzai_` are platform-managed (e.g. `sonzai_wisdom_set
 - `archetypes/customer-support.md` — heavy custom-tool usage
 - `archetypes/game-npc.md` — `give_item`, `spend_currency`, `award_xp`
 - `features/webhooks.md` — webhook-delivered tool fire (server-to-server)
-- `features/composio.md` (not in v1 — covered in `features/capabilities.md` composio flag) — SaaS integrations
+- `features/capabilities.md` — `composio` capability flag for SaaS-integration tools (Gmail, Calendar, Slack, GitHub, Linear)
 
 ## Common gotchas
 
