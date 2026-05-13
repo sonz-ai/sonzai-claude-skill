@@ -1,0 +1,80 @@
+# {{project_name}} — Sonzai integration spec
+
+**Status:** spec (pre-implementation)
+**Date:** {{date}}
+**Archetype:** {{archetype}}
+**Language:** {{language}}
+
+---
+
+## 1. Goal
+
+{{one-sentence goal — what this integration delivers to the user}}
+
+## 2. Architecture summary
+
+{{2-3 sentence summary of agent topology + per-turn flow}}
+
+## 3. Agents
+
+| ID strategy | Name | Role | Capabilities (key flags) |
+|---|---|---|---|
+| {{deterministic uuid5 namespace ".../specialist-{type}" OR generate_and_create returns}} | {{name}} | {{intake guide / specialist / single companion / etc.}} | {{memory_mode=async, web_search=on, shared_memory=off, ...}} |
+
+For each row above, include the `agents.create` or `generate_and_create` call your plan will execute.
+
+## 4. Data sources
+
+- **Priming source:** {{describe — none / CSV / Mem0 export / Zep dump / Letta archival / OpenAI Assistants threads / Character.AI export / custom JSON}}
+- **KB documents to upload at deploy:** {{list of file paths or URLs, or "none"}}
+- **User identification source:** {{e.g. Clerk JWT sub, NextAuth user.id, Slack user_id}}
+- **Migration playbook:** {{migrations/<source>.md or "n/a — greenfield"}}
+
+## 5. Integration points
+
+| Where | What |
+|---|---|
+| Chat handler | {{server endpoint that calls agents.chat / session.turn}} |
+| Tool dispatch | {{where you handle side_effects.external_tool_calls}} |
+| Webhook receiver | {{your /webhook/sonzai handler with HMAC verify, if applicable}} |
+| Scheduled jobs | {{cron/scheduler config calling client.schedules.create}} |
+| Audit destination | {{Slack / SIEM / S3 / none}} |
+
+## 6. Capabilities config (canonical)
+
+```python
+client.agents.update_capabilities(
+    agent_id,
+    memory_mode="{{sync|async}}",
+    {{list of other capabilities from archetypes/<chosen>.md section 2}}
+)
+```
+
+## 7. Custom tools (if applicable)
+
+| name | description (concise) | parameters (schema) | backend dispatcher |
+|---|---|---|---|
+| {{...}} | {{...}} | {{...}} | {{...}} |
+
+## 8. Custom states + inventory schema (if applicable)
+
+- **Custom states keys:** {{list of keys with scope and meaning}}
+- **Inventory item types:** {{KB schemas needed}}
+
+## 9. Success criteria
+
+{{measurable outcomes — what "working" looks like}}
+
+- {{criterion 1}}
+- {{criterion 2}}
+- {{...}}
+
+## 10. Out of scope (explicit)
+
+{{things deliberately not in this release}}
+
+- {{...}}
+
+## 11. Known risks / trade-offs
+
+{{anti-patterns from the archetype playbook that you've accepted, or capability trade-offs you've made}}

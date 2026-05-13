@@ -1,0 +1,111 @@
+# {{project_name}} — Sonzai implementation plan
+
+> **For agentic workers:** REQUIRED SUB-SKILL: superpowers:subagent-driven-development (recommended) or superpowers:executing-plans.
+
+**Goal:** {{from spec §1}}
+**Architecture:** {{from spec §2}}
+**Tech Stack:** Sonzai SDK ({{language}}); {{your other dependencies}}
+**Archetype:** {{archetype}} — see `archetypes/{{archetype}}.md` for the canonical patterns
+**Memory mode:** {{sync|async}}
+
+---
+
+## Task 1: {{first atomic step — typically agent creation}}
+
+**Files:**
+- Create: `{{path to your handler / setup file}}`
+
+- [ ] **Step 1: Create the agent**
+
+```{{language}}
+{{exact code from archetypes/<chosen>.md section 3 step 1}}
+```
+
+- [ ] **Step 2: Verify**
+
+```bash
+{{e.g. "rg <agent_name> | head" — confirm agent_id is recorded; check via client.agents.get()}}
+```
+
+Expected: agent exists in `agents.list()` with the right `name` and Big5.
+
+- [ ] **Step 3: Commit**
+
+```bash
+git add . && git commit -m "feat: create Sonzai agent for {{project_name}}"
+```
+
+---
+
+## Task 2: Configure capabilities
+
+**Files:**
+- Modify: `{{same setup file}}`
+
+- [ ] **Step 1: Apply capabilities config from spec §6**
+
+```{{language}}
+{{exact update_capabilities call}}
+```
+
+- [ ] **Step 2: Verify**
+
+```{{language}}
+caps = client.agents.get_capabilities(agent_id)
+assert caps.memory_mode == "{{expected}}"
+# ... per spec
+```
+
+- [ ] **Step 3: Commit**
+
+---
+
+## Task 3: {{next atomic step — chat handler, tool registration, KB upload, etc.}}
+
+(Repeat the Task pattern: Files / Steps with code blocks / Verify / Commit. Each task is one atomic unit producing self-contained shippable change.)
+
+---
+
+## Task N: Integration test
+
+**Files:**
+- Create: `tests/{{integration_test_name}}.{{ext}}`
+
+- [ ] **Step 1: Write failing integration test**
+
+{{test code that exercises the full flow per spec §9 success criteria}}
+
+- [ ] **Step 2: Run — verify it fails appropriately**
+
+```bash
+{{test command}}
+```
+
+- [ ] **Step 3: Wire all pieces from Tasks 1..N-1**
+
+- [ ] **Step 4: Run — verify it passes**
+
+- [ ] **Step 5: Commit**
+
+---
+
+## Task N+1: Production checklist
+
+- [ ] SONZAI_API_KEY in secret manager (not hardcoded)
+- [ ] BYOK configured if billing isolation required (see `decisions/byok-vs-customllm.md`)
+- [ ] Drift check passes against latest live OpenAPI (see `references/drift-detection.md`)
+- [ ] Error boundaries on chat handler
+- [ ] Audit webhook registered if applicable
+- [ ] Rate limits validated for expected user population
+- [ ] Privacy floor configured if `shared_memory=true`
+- [ ] Crisis escalation handler in place if `archetype=coach-therapist`
+
+---
+
+## Anti-patterns to watch for during implementation
+
+(Copy the specific traps from `archetypes/{{archetype}}.md` section 7 — keep them visible while implementing.)
+
+- {{anti-pattern 1}}
+- {{anti-pattern 2}}
+- {{...}}

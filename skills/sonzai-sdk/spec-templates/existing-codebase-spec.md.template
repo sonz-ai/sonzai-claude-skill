@@ -1,0 +1,64 @@
+# {{project_name}} — Sonzai integration spec (existing-codebase migration)
+
+**Status:** spec (pre-implementation)
+**Date:** {{date}}
+**Archetype:** {{archetype}}
+**Language:** {{language}}
+**Migration source:** {{Mem0 / LangChain / Letta / Zep / OpenAI Assistants / Character.AI / custom JSON / none — pure addition}}
+
+---
+
+## 0. Incumbent systems (from existing-codebase-audit)
+
+| Layer | Current | Target | Migration playbook |
+|---|---|---|---|
+| Chat handler | {{e.g. OpenAI raw / Assistants API / LangChain ConversationChain}} | Sonzai `agents.chat` or `agents.sessions.start` | `migrations/{{source}}.md` |
+| Memory | {{Mem0 / Zep / Letta / Pinecone / messages table / none}} | Sonzai memory (sessions + facts) | `migrations/{{source}}.md` |
+| Personality | {{system prompts in code / config / DB}} | Sonzai `personality_prompt` or `generate_and_create` description | `decisions/generation-vs-manual-create.md` |
+| LLM provider | {{OpenAI direct / Anthropic / Gemini / mixed}} | Sonzai (platform default / BYOK / Custom LLM) | `decisions/byok-vs-customllm.md` |
+| KB / RAG | {{Pinecone / Chroma / Weaviate / none}} | Sonzai `client.knowledge` | `features/knowledge-base.md` |
+| Proactive | {{cron / Celery / BullMQ / Temporal / none}} | Sonzai `client.schedules` / `agents.scheduleWakeup` | `features/proactive.md` |
+| Webhooks | {{existing receivers / none}} | Sonzai `client.webhooks` | `features/webhooks.md` |
+
+## 0a. Insertion points (exact file paths)
+
+| Layer | File | Line / function |
+|---|---|---|
+| Chat handler | {{e.g. server/chat.py}} | {{e.g. handle_chat function}} |
+| User identification | {{e.g. middleware/auth.ts}} | {{e.g. resolveUserId}} |
+| LLM provider call | {{e.g. lib/llm.py}} | {{e.g. complete_chat function}} |
+| Memory read | {{...}} | {{...}} |
+| Memory write | {{...}} | {{...}} |
+| KB search | {{...}} | {{...}} |
+| Scheduled jobs | {{...}} | {{...}} |
+| Webhook receiver | {{...}} | {{...}} |
+
+## 0b. Migration order (strangler — independent shippable steps)
+
+1. **{{layer}}** — {{rationale}} — verify with {{check}}
+2. **{{layer}}** — {{rationale}} — verify with {{check}}
+3. **{{layer}}** — {{rationale}} — verify with {{check}}
+
+(Per `migrations/overview.md` recommend: memory first, personality, LLM, KB, proactive, webhooks last.)
+
+## 0c. Rollback plan
+
+For each migration step:
+- Feature flag: `{{e.g. USE_SONZAI_MEMORY}}`
+- Old system kept warm for {{N}} days post-cutover
+- Rollback trigger: {{e.g. retrieval quality drops below threshold X on canary}}
+- Rollback steps: {{flip flag → traffic returns to old system}}
+
+## 0d. Parallel-run validation
+
+- **Read shadow period:** {{N days}} — both systems queried; outputs compared on {{sample-set-name}}
+- **Acceptance criteria:** {{e.g. Sonzai retrieval matches or exceeds incumbent on 90% of canary queries}}
+- **Cost during parallel-run:** {{estimate}}
+
+---
+
+## 1. Goal
+
+{{one-sentence goal — what this migration delivers}}
+
+(Continue with standard archetype-spec sections 2-11 — agents, capabilities, integration points, custom tools, success criteria, out-of-scope, risks. See `spec-templates/archetype-spec.md.template`.)

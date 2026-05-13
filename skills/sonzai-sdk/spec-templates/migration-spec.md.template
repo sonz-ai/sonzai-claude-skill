@@ -1,0 +1,92 @@
+# Migrating from {{source}} to Sonzai
+
+**Status:** spec (pre-implementation)
+**Date:** {{date}}
+**Source system:** {{Mem0 / LangChain / Letta / Zep / OpenAI Assistants / Character.AI / CRM CSV / raw JSON}}
+**Target archetype:** {{archetype — typically companion / customer-support / enterprise / hybrid}}
+**Migration playbook:** `migrations/{{source}}.md`
+
+---
+
+## 1. Source system summary
+
+{{1 paragraph — what {{source}} provides; rough scale (number of users, total messages/facts, time span)}}
+
+## 2. Data inventory
+
+| Data type | Count | Source location | Migration path |
+|---|---|---|---|
+| Users | {{N}} | {{e.g. Postgres users table / Zep export / CSV}} | `priming.batch_import` |
+| Conversations | {{N}} | {{e.g. messages table / chats/ export folder}} | `priming.prime_user` content_blocks (type=chat) |
+| Pre-extracted facts | {{N}} | {{e.g. Mem0 facts}} | `agents.memory.bulk_create_facts` |
+| KB documents | {{N}} | {{e.g. file_search files / Pinecone index}} | `client.knowledge.upload_document` |
+| Tools / functions | {{N}} | {{e.g. Assistants tools / LangChain tools}} | `agents.create_custom_tool` |
+| Webhook receivers | {{N}} | {{listing your existing endpoints}} | `client.webhooks.register` |
+
+## 3. Migration order
+
+(Numbered steps from `migrations/{{source}}.md`, adapted to your specifics.)
+
+1. {{step 1 — typically: export source data}}
+2. {{step 2 — typically: replicate persona / agent}}
+3. {{step 3 — typically: bulk-import historical data}}
+4. {{step 4 — typically: switch reads}}
+5. {{step 5 — typically: stop writes to old; decommission}}
+
+## 4. Feature parity matrix
+
+| {{source}} feature | Sonzai equivalent | Status |
+|---|---|---|
+| {{e.g. ConversationBufferMemory}} | `agents.sessions.*` | covered |
+| {{e.g. file_search}} | `client.knowledge.upload_document` + `knowledge_base=true` | covered |
+| {{e.g. code_interpreter}} | custom tool calling your backend executor | partial — requires your sandbox |
+| {{e.g. LangSmith tracing}} | webhook + your own observability | partial — different observability surface |
+| {{...}} | {{...}} | {{covered / partial / unsupported — and rationale if unsupported}} |
+
+## 5. Data import jobs
+
+For each bulk import job:
+
+```python
+job = client.priming.batch_import(
+    agent_id={{...}},
+    users=[
+        # {{N}} users per chunk; chunk count: {{total/N}}
+    ],
+)
+# Poll job.import_id until status=completed
+```
+
+- **Estimated row count:** {{total rows}}
+- **Chunk size:** {{500-1000}}
+- **Estimated duration:** {{minutes/hours per chunk × chunks}}
+- **Rollback strategy:** {{e.g. re-prime is idempotent on user_id; failed users tracked in a bad-rows file}}
+
+## 6. Cutover plan
+
+- **Parallel-run period:** {{N days}}
+- **Validation queries:** {{specific sample set you'll compare on}}
+- **Switch traffic:** {{when, percentage rollout — e.g. 10% → 50% → 100% over 1 week}}
+- **Decommission {{source}}:** {{when — typically 14-30 days after 100% Sonzai traffic}}
+
+## 7. Cost during migration
+
+- **Parallel-run cost:** running both systems for {{N}} days
+- **Migration LLM cost** (if using priming with content_blocks that trigger fact extraction): {{estimate based on rows × tokens}}
+- **Sonzai bulk-import quota:** verify your tier accommodates {{total rows}}
+
+## 8. Success criteria
+
+- Retrieval parity: Sonzai matches or exceeds incumbent on {{sample-set}} (≥{{threshold}}%)
+- Latency: P50 chat response within {{ms}} (typically equal or better than incumbent)
+- Cost: monthly LLM cost {{equal / lower}} than incumbent (factoring BYOK if applicable)
+- Audit: chat audit trail matches incumbent's coverage (`agent.message.created` webhook + KB write audit)
+- User-facing: no regression in NPS / engagement metrics post-cutover
+
+## 9. Known risks during migration
+
+- **Data quality:** {{e.g. some Mem0 records are truncated / Zep summaries lose granularity}}
+- **Personality continuity:** {{e.g. existing users may notice slight tone shift; communicate via release notes}}
+- **Capability gaps:** {{from §4 — any "unsupported" features need a workaround}}
+- **Cost overrun during parallel-run:** {{cap with budget alerts}}
+- **Rollback complexity:** {{document the steps required to revert each strangler step}}
