@@ -35,6 +35,19 @@ Before Phase 0a:
 
 ---
 
+## Phase 0-pre: Notify-setup
+
+→ Read `notify-setup.md`
+
+Detect Gmail + Slack MCP availability. Load recipient config from env vars or `~/.config/sonzai/cto.json`. If neither config nor MCPs available, set `notify_enabled = false` and proceed silently. This phase NEVER blocks — degraded notify is OK.
+
+State produced for downstream:
+- `notify_enabled`: bool
+- `gmail_tool_prefix`, `slack_tool_prefix`: strings or null
+- `recipient`: { gmail, slack_user_id }
+
+---
+
 ## Phase 0a — Transcript analysis
 
 → Read `transcript-analysis.md`.

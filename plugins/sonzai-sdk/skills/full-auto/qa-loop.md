@@ -105,11 +105,61 @@ If `overall: fail`:
 2. Fixer commits its changes
 3. `docker compose up -d --build` (rebuild + restart)
 4. Re-run QA loop from the top (smoke + archetype)
-5. Bounded 5 retries. After that, surface to operator: "QA still failing after 5 fix attempts. Forcing Gate B for your decision." Then proceed to Gate B WITH `qa: failing` in the report.
+5. Bounded 5 retries. After that:
+
+### Notify build done with failing QA (best-effort)
+
+If `notify_enabled` is true: dispatch `subagent-prompts/notifier.md`:
+
+```yaml
+event:        full_auto_failed_qa
+run_id:       <run-id>
+recipient:    <from state>
+subject:      "[full-auto] Build done with failing QA — run <run-id>"
+body: |
+  ⚠️  full-auto build done with failing QA (5 fixer cycles exhausted).
+
+  Run:        <run-id>
+  Live URL:   <APP_URL>
+  Report:     docs/cto-review/<date>-final-report.md
+  QA status:  FAILING on: <comma-list of failing checks>
+  Time taken: <ELAPSED>
+
+  App is up; some flows broken. See report for what's red.
+interactive:  false
+```
+
+Record IDs in state. Continue to final-report (which records QA as failed).
+
+   Surface to operator: "QA still failing after 5 fix attempts. Forcing Gate B for your decision." Then proceed to Gate B WITH `qa: failing` in the report.
 
 ## On success
 
 `overall: pass` → save QA report to in-memory state, then:
+
+### Notify build complete (best-effort)
+
+If `notify_enabled` is true (from Phase 0-pre): dispatch `subagent-prompts/notifier.md`:
+
+```yaml
+event:        full_auto_complete
+run_id:       <run-id from state>
+recipient:    <from state>
+subject:      "[full-auto] Build complete (healthy) — run <run-id>"
+body: |
+  ✅ full-auto build complete (healthy).
+
+  Run:        <run-id>
+  Live URL:   <APP_URL>
+  Report:     docs/cto-review/<date>-final-report.md
+  QA status:  passing
+  Time taken: <ELAPSED>
+
+  App is still running (docker compose). Push when ready.
+interactive:  false
+```
+
+Record returned `message_id` / `message_ts` in run state for the final report's notifications table. Best-effort; if notifier returns errors for both channels, log one line and continue to final-report.
 
 - **`full-auto` mode:** write the final report (`final-report.md.template`) and exit. App keeps running locally; operator owns next steps (push, deploy to prod, tear down).
 - **`cto-loop` mode:** read `../cto-loop/cto-review-gate.md` next (Gate B).

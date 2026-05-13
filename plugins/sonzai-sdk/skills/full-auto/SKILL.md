@@ -44,6 +44,7 @@ description: Use when given a meeting transcript or scoping doc and asked to shi
 
 | # | Phase | Reference | Output |
 |---|---|---|---|
+| 0-pre | Notify-setup | `notify-setup.md` | Detect Gmail+Slack MCPs, load recipient config |
 | 0a | Transcript analysis | `transcript-analysis.md` | in-memory synthesis |
 | 0b | Project type detection | `project-type-detection.md` | `greenfield` or `brownfield` |
 | 0c-G | Tech-stack derivation (greenfield) | `tech-stack-derivation.md` | `tech_stack` |
