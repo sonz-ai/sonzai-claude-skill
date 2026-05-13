@@ -48,6 +48,8 @@ For developers who just want a syntax lookup, a skip-wizard path falls through t
 
 Take a transcript, ship a running local app. Zero operator prompts. Bounded fix loop.
 
+- **Build-complete notifications (v1.7.0+):** sends a Slack DM + Gmail when the build finishes (healthy or with failing QA). Useful for long unattended runs.
+
 1. **Pre-flight** — drift check (live OpenAPI), Docker check, `SONZAI_API_KEY` check
 2. **Phase 0a-d** — transcript analysis → project-type detection → tech-stack derivation (greenfield) OR brownfield audit → derive 8 sonzai wizard answers
 3. **Phase 1** — assemble masterplan at `docs/cto-review/<date>-masterplan.md`
@@ -61,6 +63,8 @@ Operator owns the push decision — `full-auto` commits locally, never pushes.
 ### `cto-loop` skill (semi-auto, transcript → running app + 2 gates)
 
 Same pipeline as `full-auto`, with two operator gates inserted and an interactive tech-stack intake on greenfield (instead of autonomous defaults).
+
+- **Async replies via Slack/Gmail (v1.7.0+):** when Gmail + Slack MCPs are enabled, operator can approve/feedback/abort gates from their inbox or Slack DM instead of returning to the terminal. 20min poll cadence, 24h timeout, paused-resumable.
 
 1. **Pre-flight** — same checks as full-auto
 2. **Phase 0a-b** — transcript analysis + project-type detection (identical to full-auto)
@@ -77,6 +81,24 @@ Same pipeline as `full-auto`, with two operator gates inserted and an interactiv
 ### `sonzai-internal-staff` skill (internal-only)
 
 Layers monolith + workspace awareness onto the public skills. Augments `full-auto`'s drift check with the monolith's generated OpenAPI, tails server logs during QA cycles, verifies wizard capability questions against `services/contextengine/domain/entity/agent.go`. Useless without read access to the private monolith — see install section.
+
+---
+
+## Notification setup (optional)
+
+For Slack DM + Gmail notifications + async reply support in cto-loop:
+
+**Claude Code:**
+1. `/mcp` → enable `claude.ai Gmail` (authenticate via Google OAuth)
+2. `/mcp` → enable `plugin:slack:slack` (authenticate via Slack OAuth) — or run `/plugin install slack` first if not in your marketplace
+
+**Codex:**
+1. `codex mcp enable codex_gmail`
+2. `codex mcp enable codex_slack`
+
+**Other platforms (Gemini CLI, Cursor):** the plugin's `.mcp.json` ships community fallbacks (`@shinzolabs/gmail-mcp` for Gmail, `slack-mcp-server` by korotovsky for Slack). Set one of `SLACK_MCP_XOXP_TOKEN` / `SLACK_MCP_XOXB_TOKEN` / `SLACK_MCP_XOXC_TOKEN`+`SLACK_MCP_XOXD_TOKEN` env vars for Slack; Gmail authenticates via browser OAuth on first use (cached in `~/.gmail-mcp/`).
+
+If no notifications are wanted, do nothing — both skills fall back to terminal-only mode.
 
 ---
 

@@ -2,6 +2,45 @@
 
 All notable changes to `sonzai-claude-skill` are documented here. The project follows [Semantic Versioning](https://semver.org/). Dates are `YYYY-MM-DD`.
 
+## v1.7.0 — 2026-05-13
+
+### Added — Notifications + async reply
+
+**Both `full-auto` and `cto-loop` now dispatch outbound notifications** (Slack DM + Gmail) at pipeline terminal events:
+- `full-auto`: Build complete healthy, build done with failing QA
+- `cto-loop`: Gate A reached, Gate B reached, final report written, abort
+
+**`cto-loop` adds async reply support**: when Gmail + Slack MCPs are enabled, operator can reply to Gate A and Gate B from their inbox or Slack DM. First reply (terminal, Slack, or Gmail) wins. Polling cadence 20min, timeout 24h, then paused-resumable.
+
+### New files
+- `plugins/sonzai-sdk/.mcp.json` — community Gmail + Slack MCP fallbacks for non-Claude-Code platforms (uses `@shinzolabs/gmail-mcp` + korotovsky `slack-mcp-server`)
+- `plugins/sonzai-sdk/skills/full-auto/notify-setup.md` — autonomous variant (Phase 0-pre)
+- `plugins/sonzai-sdk/skills/full-auto/subagent-prompts/notifier.md` — notification dispatcher
+- `plugins/sonzai-sdk/skills/full-auto/subagent-prompts/reply-poller.md` — reply poller
+- `plugins/sonzai-sdk/skills/cto-loop/notify-setup.md` — interactive variant (asks if not cached)
+
+### Modified
+- Full-auto pipeline + qa-loop wire notifier on terminal events
+- Cto-loop masterplan-gate + cto-review-gate add async ScheduleWakeup branches
+- Wizard SKILL.md mentions notifications in skill-matrix
+- Repo CLAUDE.md adds Rule 7 (notification PII) + Rule 8 (.mcp.json always-search)
+
+### MCP detection precedence
+Skill detects available MCP tools at runtime:
+1. Anthropic-shipped: `claude.ai Gmail` (via `/mcp`) + `plugin:slack:slack` (via `/plugin install slack`)
+2. Codex first-party: `codex_gmail` + `codex_slack` (v0.117.0+)
+3. Community fallback: `.mcp.json` ships `@shinzolabs/gmail-mcp` + `slack-mcp-server`
+
+If neither, falls back to terminal-only sync mode (v1.6.0 behavior).
+
+### Hard rules
+- Notifications are best-effort — failed send never blocks pipeline
+- No transcript / customer / tenant content in any notification body
+- Strict keyword reply grammar (no fuzzy match — same as terminal)
+- State file `~/.config/sonzai/cto-runs/<run-id>.json` is local-only
+
+---
+
 ## v1.6.0 — 2026-05-13
 
 ### Added: `cto-loop` skill (semi-autonomous, two-gate variant of `full-auto`)
