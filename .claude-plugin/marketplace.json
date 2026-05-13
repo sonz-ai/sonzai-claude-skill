@@ -10,7 +10,7 @@
   "plugins": [
     {
       "name": "sonzai-sdk",
-      "description": "Three skills for Sonzai SDK developers: wizard (sonzai-sdk: human-in-the-loop spec + plan), autonomous closed-loop (full-auto: transcript → running app, docker-compose deploy, functional QA + auto-fixer, zero operator prompts), and semi-autonomous (cto-loop: same pipeline + 2 operator gates + interactive 7-question tech-stack intake + operator-feedback fixer loop). Shared core: always-search-current-state hard rule, builder/fixer/auditor/version-checker subagents, postgres/postgres+redis/stateless docker-compose templates.",
+      "description": "Three skills for Sonzai SDK developers: wizard (sonzai-sdk: human-in-the-loop spec + plan), autonomous closed-loop (full-auto: transcript → running app, docker-compose deploy, functional QA + auto-fixer, zero operator prompts), and semi-autonomous (cto-loop: same pipeline + 2 operator gates + interactive 7-question tech-stack intake + operator-feedback fixer loop). Shared core: always-search-current-state hard rule, builder/fixer/auditor/version-checker subagents, postgres/postgres+redis/stateless docker-compose templates. v1.7.0 adds outbound Slack DM + Gmail notifications on pipeline events for both full-auto and cto-loop, and async reply support for cto-loop gates (operator can approve/feedback/abort via Slack DM or Gmail; skill polls 20min cadence, 24h timeout, resumable).",
       "author": {
         "name": "Sonzai Labs",
         "url": "https://sonz.ai"

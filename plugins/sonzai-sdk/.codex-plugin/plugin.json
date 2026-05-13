@@ -1,7 +1,7 @@
 {
   "name": "sonzai-sdk",
-  "version": "1.6.0",
-  "description": "Three skills for Sonzai SDK developers: (1) sonzai-sdk — wizard-driven spec + plan; (2) full-auto — autonomous transcript → running-app pipeline (tech-stack derivation OR brownfield audit, masterplan, builder subagent with always-search rule, docker-compose deploy, functional QA, auto-fixer loop, all bounded); (3) cto-loop — same pipeline as full-auto with two operator gates (masterplan approval + live-app review) and an interactive 7-question tech-stack intake. Covers 7 archetypes across Python / TypeScript / Go. BYOK is the recommended production posture. Shared core lives in full-auto/; cto-loop is a thin overlay.",
+  "version": "1.7.0",
+  "description": "Three skills for Sonzai SDK developers: (1) sonzai-sdk — wizard-driven spec + plan; (2) full-auto — autonomous transcript → running-app pipeline (tech-stack derivation OR brownfield audit, masterplan, builder subagent with always-search rule, docker-compose deploy, functional QA, auto-fixer loop, all bounded); (3) cto-loop — same pipeline as full-auto with two operator gates (masterplan approval + live-app review) and an interactive 7-question tech-stack intake. Covers 7 archetypes across Python / TypeScript / Go. BYOK is the recommended production posture. Shared core lives in full-auto/; cto-loop is a thin overlay. v1.7.0 adds outbound Slack DM + Gmail notifications on pipeline events for both full-auto and cto-loop, and async reply support for cto-loop gates (operator can approve/feedback/abort via Slack DM or Gmail; skill polls 20min cadence, 24h timeout, resumable).",
   "author": {
     "name": "Sonzai Labs",
     "email": "engineering@sonz.ai",

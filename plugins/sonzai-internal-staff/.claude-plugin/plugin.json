@@ -1,6 +1,6 @@
 {
   "name": "sonzai-internal-staff",
-  "version": "1.6.0",
+  "version": "1.7.0",
   "description": "Internal-only companion plugin to sonzai-sdk. Layers awareness of the Sonzai monolith (sonzai-ai-monolith-ts: contextengine, platform/api, ai-character-service) and SDK source workspace ($SONZAI_WORKSPACE/sonzai-sdk/) onto the public skills so Sonzai staff can dogfood sonzai-sdk, full-auto, and cto-loop with full server-side context. Useless without read access to the private monolith repo — do not install unless you are Sonzai internal staff.",
   "author": {
     "name": "Sonzai Labs",
