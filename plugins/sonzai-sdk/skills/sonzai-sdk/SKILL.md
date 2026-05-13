@@ -35,10 +35,10 @@ The wizard diagnoses what you're building, prescribes the archetype + memory mod
 | Operator has... | Wants... | Use |
 |---|---|---|
 | A scoping conversation with stakeholders | Interactive wizard → spec → plan (no build) | this skill (`sonzai-sdk`) |
-| A meeting transcript + no human in loop | Unattended autonomous build → running app | `full-auto` (sibling) |
-| A meeting transcript + tech-lead in loop | Supervised build with 2 gates (masterplan + live-app review) | `cto-loop` (sibling) |
+| A meeting transcript + no human in loop | Unattended autonomous build → running app. Sends Slack/Gmail notification on completion (build done healthy / build done failing QA) when MCPs are enabled. | `full-auto` (sibling) |
+| A meeting transcript + tech-lead in loop | Supervised build with 2 gates (masterplan + live-app review). Operator can reply to gates from Slack DM or Gmail (with MCPs enabled) — terminal isn't required. | `cto-loop` (sibling) |
 
-Both `full-auto` and `cto-loop` deploy the built app locally with `docker compose` and run functional QA against the running stack. `full-auto` auto-fixes; `cto-loop` lets the tech-lead steer the fix loop via free-text feedback. Both share the same core machinery (tech-stack derivation/intake, brownfield audit, version-search hard rule, builder + fixer subagents).
+Both `full-auto` and `cto-loop` deploy the built app locally with `docker compose` and run functional QA against the running stack. `full-auto` auto-fixes; `cto-loop` lets the tech-lead steer the fix loop via free-text feedback. Both share the same core machinery (tech-stack derivation/intake, brownfield audit, version-search hard rule, builder + fixer subagents). Both auto-dispatch a `notifier` subagent at terminal events when Gmail + Slack MCPs are enabled. `cto-loop` additionally polls for replies via Slack DM + Gmail unread (24h budget, paused-resumable).
 
 Trigger phrases:
 - `full-auto`: "build from this transcript" / "go full auto" / "run full-auto" / "/full-auto"
