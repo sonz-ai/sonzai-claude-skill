@@ -4,6 +4,14 @@ Overlay on `../full-auto/pipeline.md`. Same phases, two gates inserted, two phas
 
 When `cto-loop` is active, read this file for the routing — it tells you when to use a cto-loop-local file vs `../full-auto/<file>.md`.
 
+## Phase 0-pre: Notify-setup
+
+→ Read `notify-setup.md`
+
+Interactive overlay on `../full-auto/notify-setup.md`. Detects Gmail + Slack MCP availability. If recipient config missing AND at least one MCP available, asks operator once for Gmail address + Slack handle; caches to `~/.config/sonzai/cto.json`. Used by Gate A and Gate B for async reply support.
+
+If no MCPs available OR operator says `skip`: cto-loop runs in terminal-only sync mode (same as full-auto with notify disabled).
+
 ## Phase map
 
 ```
@@ -107,6 +115,7 @@ Non-gate phases run without banners; they print short status updates ("Building.
 
 | Need to do | File to read |
 |---|---|
+| **0-pre Notify-setup** | `../full-auto/notify-setup.md` (autonomous) | **`notify-setup.md`** (interactive 1Q ask if no cache) |
 | Analyze transcript | `../full-auto/transcript-analysis.md` |
 | Decide greenfield vs brownfield | `../full-auto/project-type-detection.md` |
 | Greenfield: ask the 7 questions | `tech-stack-intake.md` (this skill) |
@@ -128,3 +137,18 @@ All inherited from `../full-auto/SKILL.md` plus the two cto-loop-specific rules 
 
 1. **Two gates are non-optional.**
 2. **Interactive overrides override autonomous.**
+
+## Async gates
+
+When `notify_enabled` is true AND `ScheduleWakeup` is available, Gates A and B run in async mode:
+
+1. Print gate banner (same as terminal).
+2. Dispatch `../full-auto/subagent-prompts/notifier.md` to send Slack DM + Gmail.
+3. Save run state to `~/.config/sonzai/cto-runs/<run-id>.json`.
+4. `ScheduleWakeup(1200s)`, exit turn.
+5. On wakeup: dispatch `../full-auto/subagent-prompts/reply-poller.md`, process result.
+6. Loop steps 4-5 until reply OR 24h timeout (then pause + resumable).
+
+Terminal input remains an override path even in async mode.
+
+State file at `~/.config/sonzai/cto-runs/<run-id>.json` enables resume after timeout via `/cto-loop resume <run-id>`.

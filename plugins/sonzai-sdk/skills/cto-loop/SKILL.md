@@ -1,6 +1,6 @@
 ---
 name: cto-loop
-description: Use when given a meeting transcript or scoping document and the goal is a running, locally-deployed product with operator (CTO / tech lead) approval at two gates — masterplan validation before any build work, then live-app review after docker-compose boot. Triggers on phrases like "CTO in the loop", "tech-lead review build", "transcript with two gates", "build it and let me review the running app". Runs full-auto's pipeline with two operator gates inserted and an interactive tech-stack intake (7 questions) instead of autonomous defaults. For unattended autonomous builds, use full-auto. For wizard-only output (spec + plan, no build), use sonzai-sdk.
+description: Use when given a meeting transcript or scoping document and the goal is a running, locally-deployed product with operator (CTO / tech lead) approval at two gates — masterplan validation before any build work, then live-app review after docker-compose boot. Triggers on phrases like "CTO in the loop", "tech-lead review build", "transcript with two gates", "build it and let me review the running app". Runs full-auto's pipeline with two operator gates inserted and an interactive tech-stack intake (7 questions) instead of autonomous defaults. For unattended autonomous builds, use full-auto. For wizard-only output (spec + plan, no build), use sonzai-sdk. Operator can ALSO reply to gates via Slack DM or Gmail when those MCPs are enabled — skill polls every 20min for up to 24h.
 ---
 
 # cto-loop
@@ -27,6 +27,7 @@ The pipeline mirrors `full-auto`'s exactly, with two gates inserted and two phas
 
 | Phase | full-auto behavior | cto-loop overlay |
 |---|---|---|
+| **0-pre Notify-setup** | `../full-auto/notify-setup.md` (autonomous) | **`notify-setup.md` (interactive — asks if missing)** |
 | Pre-flight | drift check, docker check, key check | identical |
 | 0a Transcript | `../full-auto/transcript-analysis.md` | identical |
 | 0b Project type | `../full-auto/project-type-detection.md` | identical |
@@ -52,6 +53,7 @@ The pipeline mirrors `full-auto`'s exactly, with two gates inserted and two phas
 
 | File | Purpose |
 |---|---|
+| `notify-setup.md` | Phase 0-pre: interactive ask for Gmail/Slack if not cached |
 | `pipeline.md` | Overlay pipeline with gates inserted |
 | `tech-stack-intake.md` | Interactive 7-question variant of tech-stack-derivation |
 | `brownfield-audit.md` | Detect-and-confirm wrapper around full-auto's audit |
