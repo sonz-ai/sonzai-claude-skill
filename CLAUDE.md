@@ -73,6 +73,16 @@ When adding a feature that applies to BOTH `full-auto` and `cto-loop`, put the f
 
 Wrong: adding a new docker-compose template to `cto-loop/templates/`. Right: add it to `full-auto/templates/` and both skills get it.
 
+### 7. Notification bodies obey Phase 0a's PII / tenant-name rules
+
+Notifications from `plugins/sonzai-sdk/skills/full-auto/subagent-prompts/notifier.md` are derived from masterplan + run state, never from raw transcript. Same redaction as Phase 0a applies: no tenant / client / customer names, no PII (operator name beyond recipient header), no transcript content, no code snippets, no API keys, no remote URLs (Live URLs are localhost only).
+
+The notifier subagent is forbidden from creative composition — it sends exactly what the dispatching skill puts in `body`. If a contributor adds dynamic body-generation logic that reaches outside the run state, reject.
+
+### 8. `.mcp.json` follows always-search rule too
+
+The plugin's `plugins/sonzai-sdk/.mcp.json` MUST NOT pin specific package versions. Use `@latest` or unpinned (`npx -y <package>`). If you're adding a new MCP server to `.mcp.json`, verify the package name + invocation flags via `npm view` at write-time — same rule as Rule 5. Don't trust training-data knowledge of which packages exist or what they're called.
+
 ## When updating the SDK
 
 After a breaking change ships in any of the three SDKs:
