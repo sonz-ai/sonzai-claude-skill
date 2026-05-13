@@ -1,6 +1,7 @@
 {
   "name": "sonzai-sdk",
-  "description": "Help AI coding agents implement the Sonzai SDK (Python, TypeScript, Go) correctly against the live api.sonz.ai OpenAPI spec.",
+  "version": "1.0.0",
+  "description": "Wizard-driven skill: diagnoses what you're building with the Sonzai SDK, prescribes the right archetype + memory mode + capabilities, and drives you through spec → review → plan. Covers 7 archetypes, 20 feature references, 10 decision aids, 9 migration playbooks.",
   "author": {
     "name": "Sonzai Labs",
     "email": "support@sonz.ai",
