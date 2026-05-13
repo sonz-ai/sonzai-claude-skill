@@ -2,6 +2,102 @@
 
 All notable changes to `sonzai-claude-skill` are documented here. The project follows [Semantic Versioning](https://semver.org/). Dates are `YYYY-MM-DD`.
 
+## v1.5.0 — 2026-05-13
+
+### Breaking: repo split into two plugins (install-time gating)
+
+The repo now ships **two plugins** instead of one. The runtime gate (`SONZAI_INTERNAL_STAFF=1` env var / `--sonzai-internal-staff` flag) is **removed**. Gating now happens at install time, not runtime — the plugin marketplace model decides who gets which files on disk.
+
+**Before (v1.4.0)** — single plugin, three skills, runtime gate:
+
+```
+sonzai-claude-skill/
+├── .claude-plugin/plugin.json
+└── skills/
+    ├── sonzai-sdk/
+    ├── full-auto/
+    └── sonzai-internal-staff/    ← copied to every public disk; STOP gate at runtime
+```
+
+**After (v1.5.0)** — two plugins, three skills, install-time gate:
+
+```
+sonzai-claude-skill/
+├── .claude-plugin/marketplace.json                 ← lists both plugins; sonz-ai marketplace
+├── plugins/
+│   ├── sonzai-sdk/                                 ← PUBLIC plugin (auto-installed)
+│   │   ├── .claude-plugin/plugin.json
+│   │   ├── .codex-plugin/plugin.json
+│   │   └── skills/{sonzai-sdk, full-auto}
+│   └── sonzai-internal-staff/                      ← INTERNAL plugin (opt-in install only)
+│       ├── .claude-plugin/plugin.json
+│       ├── .codex-plugin/plugin.json
+│       └── skills/sonzai-internal-staff
+```
+
+**Public-user UX (Claude Code):**
+
+```bash
+/plugin marketplace add sonz-ai/sonzai-claude-skill
+/plugin install sonzai-sdk@sonz-ai
+```
+
+→ only public files copied to disk. Internal-staff skill is NOT installed.
+
+**Staff UX (one extra line):**
+
+```bash
+/plugin install sonzai-internal-staff@sonz-ai
+```
+
+→ adds the internal plugin alongside.
+
+**Codex** gets the same shape via `.codex-plugin/plugin.json` in each plugin folder. Manual install (no marketplace) uses per-plugin symlinks — see `README.md`.
+
+### Why this matters
+
+Earlier versions still copied the internal SKILL.md (with its `$SONZAI_WORKSPACE/sonzai-ai-monolith-ts/...` paths and monolith-aware augmentations) onto every public user's disk, even though a runtime gate refused to load it. That was wasteful and conceptually messy.
+
+The new shape mirrors Anthropic's own `claude-plugins-official` marketplace pattern (200+ plugins in one repo, each independently installable by name via `git-subdir`/relative-path source). It also matches Codex's plugin model 1:1.
+
+### Removed
+
+- `SONZAI_INTERNAL_STAFF=1` env var gate (no longer needed)
+- `--sonzai-internal-staff` invocation flag (no longer needed)
+- STOP / gate-check block at the top of the internal SKILL.md
+- Description-frontmatter language in the internal SKILL.md requiring runtime opt-in
+- Root-level `.claude-plugin/plugin.json` (replaced by per-plugin manifests + marketplace.json)
+
+### Added
+
+- `.claude-plugin/marketplace.json` — sonz-ai marketplace listing both plugins
+- `plugins/sonzai-sdk/.claude-plugin/plugin.json` + `.codex-plugin/plugin.json` — public plugin manifests
+- `plugins/sonzai-internal-staff/.claude-plugin/plugin.json` + `.codex-plugin/plugin.json` — internal plugin manifests
+
+### Migration for existing v1.4.0 installs
+
+```bash
+# Claude Code
+/plugin uninstall sonzai-sdk          # the old single plugin
+/plugin marketplace add sonz-ai/sonzai-claude-skill
+/plugin install sonzai-sdk@sonz-ai    # the new public plugin
+# Optional, staff only:
+/plugin install sonzai-internal-staff@sonz-ai
+
+# Manual symlink users
+rm ~/.claude/skills/sonzai-sdk
+ln -s ~/sonzai-claude-skill/plugins/sonzai-sdk/skills/sonzai-sdk ~/.claude/skills/sonzai-sdk
+# Repeat for full-auto and (if staff) sonzai-internal-staff
+```
+
+### Unchanged
+
+- All skill contents (intake.md, archetypes, decisions, runtime-mode.md, full-auto pipeline, internal workspace-pointers.md) carry forward as-is. Only paths and manifests changed.
+- Wizard answers Q1–Q8, BYOK-as-production-default, and the 7 archetype playbooks remain identical to v1.4.0.
+- `CLAUDE.md` maintenance rules unchanged: public-plugin content must remain tenant-agnostic; internal pointers live only in `plugins/sonzai-internal-staff/`.
+
+---
+
 ## v1.4.0 — 2026-05-13
 
 ### Added: Q8 (Runtime mode) — the wizard's biggest architectural decision

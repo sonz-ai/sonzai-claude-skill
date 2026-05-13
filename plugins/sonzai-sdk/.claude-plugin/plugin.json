@@ -1,0 +1,21 @@
+{
+  "name": "sonzai-sdk",
+  "version": "1.5.0",
+  "description": "Two skills for Sonzai SDK developers: (1) sonzai-sdk — wizard-driven; prescribes archetype + memory mode + runtime mode (full-chat vs memory-layer via sessions vs memory-layer via /process) + capabilities; drives spec → review → plan. (2) full-auto — autonomous closed-loop: takes a meeting transcript, dispatches a builder subagent, exercises the built app (API + UI), feeds failures back until it works. Covers 7 archetypes across Python / TypeScript / Go. BYOK is the recommended production posture.",
+  "author": {
+    "name": "Sonzai Labs",
+    "email": "engineering@sonz.ai",
+    "url": "https://sonz.ai"
+  },
+  "homepage": "https://sonz.ai/docs",
+  "repository": "https://github.com/sonz-ai/sonzai-claude-skill",
+  "license": "MIT",
+  "keywords": [
+    "sonzai",
+    "sdk",
+    "ai-agents",
+    "memory",
+    "personality"
+  ],
+  "skills": "./skills/"
+}

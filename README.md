@@ -1,13 +1,24 @@
 # sonzai-claude-skill
 
-A skill for AI coding agents (Claude Code, Codex, Gemini CLI, Copilot CLI) that **diagnoses what the developer is building** with the Sonzai SDK, **prescribes** the right archetype + memory mode + capabilities, and **drives them through spec → review → plan** using the superpowers brainstorming/writing-plans discipline.
+A multi-plugin skill repo for AI coding agents (Claude Code, Codex, Gemini CLI, Copilot CLI) building on the **Sonzai SDK**. Two plugins ship from this repo:
 
-## What this skill does
+| Plugin | Skills | Audience |
+|---|---|---|
+| **`sonzai-sdk`** (public) | `sonzai-sdk` (wizard) + `full-auto` (autonomous closed-loop) | Any developer using the Sonzai SDK |
+| **`sonzai-internal-staff`** (internal-only) | `sonzai-internal-staff` | Sonzai staff with read access to private monolith repos |
 
-When invoked, the skill:
+The `sonzai-internal-staff` plugin is **install-time gated** — it lives in a separate plugin manifest, so it is never copied to a non-staff disk just because they installed `sonzai-sdk`.
+
+---
+
+## What the skills do
+
+### `sonzai-sdk` skill (the wizard)
+
+When invoked:
 
 1. **Step 0 — drift check.** Compares the installed SDK version's committed OpenAPI snapshot against the live spec at `https://api.sonz.ai/docs/openapi.json`. Catches stale code generation.
-2. **Step 1 — runs the wizard** (`intake.md`). 7-question diagnostic interview (skipping any answered by workspace inference). Forks on greenfield vs existing-codebase.
+2. **Step 1 — runs the wizard** (`intake.md`). 8-question diagnostic interview (Q1–Q8: archetype, integration path, latency, capabilities, brand/persona, proactive, scope, runtime mode). Skips any answered by workspace inference. Forks on greenfield vs existing-codebase.
 3. **Loads the archetype playbook** that matches the developer's intent — one of:
    - `companion` — 1:1 persistent companion (Replika-shaped)
    - `guide-router` — MBTI / personality-routed (intake guide + N specialists)
@@ -20,86 +31,172 @@ When invoked, the skill:
 
 For developers who just want a syntax lookup, a skip-wizard path falls through to the per-language references (`python.md`, `typescript.md`, `go.md`).
 
+### `full-auto` skill (autonomous closed-loop)
+
+Take a meeting transcript or a paste of client requirements, no operator prompts:
+
+1. **Phase 0** — drift check (same as wizard) + transcript analysis (`transcript-analysis.md`)
+2. **Phase 1** — derives all 8 wizard answers from the transcript (`answer-derivation.md`)
+3. **Phase 2** — dispatches a builder subagent that runs the `sonzai-sdk` wizard end-to-end (`builder-dispatch.md`)
+4. **Phase 3** — receives JSON contract back: commits, spec path, plan path, entrypoints, smoke-build
+5. **Phase 4** — boots the built app (backend + frontend if any) and exercises it (`qa-loop.md`)
+6. **Phase 5** — on QA failure, re-dispatches the builder subagent via `SendMessage` for fixes (bounded 5-cycle loop)
+
+Operator owns the push decision — `full-auto` only commits locally.
+
+### `sonzai-internal-staff` skill (internal-only)
+
+Layers monolith + workspace awareness onto the public skills. Augments `full-auto`'s drift check with the monolith's generated OpenAPI, tails server logs during QA cycles, verifies wizard capability questions against `services/contextengine/domain/entity/agent.go`. Useless without read access to the private monolith — see install section.
+
+---
+
 ## Install
 
-### Claude Code (manual — current)
+### Claude Code
+
+Recommended (marketplace):
 
 ```bash
-git clone https://github.com/sonz-ai/sonzai-claude-skill ~/sonzai-claude-skill
-ln -s ~/sonzai-claude-skill/skills/sonzai-sdk ~/.claude/skills/sonzai-sdk
+/plugin marketplace add sonz-ai/sonzai-claude-skill
+/plugin install sonzai-sdk@sonz-ai
 ```
 
-### Claude Code (plugin marketplace, once published)
+That installs **only the public plugin**. The two public skills (`sonzai-sdk`, `full-auto`) become available; the internal-staff skill is NOT copied.
+
+Sonzai internal staff (additional, optional):
 
 ```bash
-/plugin install sonz-ai/sonzai-claude-skill
+/plugin install sonzai-internal-staff@sonz-ai
+```
+
+Set `SONZAI_WORKSPACE` to the dir containing `sonzai-sdk/` and `sonzai-ai-monolith-ts/` (or run from inside that workspace; the skill will walk up to find it).
+
+Manual install (no marketplace):
+
+```bash
+# Public plugin
+git clone https://github.com/sonz-ai/sonzai-claude-skill ~/sonzai-claude-skill
+ln -s ~/sonzai-claude-skill/plugins/sonzai-sdk/skills/sonzai-sdk      ~/.claude/skills/sonzai-sdk
+ln -s ~/sonzai-claude-skill/plugins/sonzai-sdk/skills/full-auto       ~/.claude/skills/full-auto
+
+# Internal staff (optional, requires monolith access to be useful)
+ln -s ~/sonzai-claude-skill/plugins/sonzai-internal-staff/skills/sonzai-internal-staff \
+      ~/.claude/skills/sonzai-internal-staff
 ```
 
 ### Codex
 
+Recommended (plugin):
+
+```bash
+codex plugin add sonz-ai/sonzai-claude-skill         # registers marketplace
+codex plugin install sonzai-sdk@sonz-ai
+# Internal staff (optional):
+codex plugin install sonzai-internal-staff@sonz-ai
+```
+
+Codex reads `.codex-plugin/plugin.json` from each plugin folder. Same `skills/` layout as Claude Code.
+
+Manual:
+
 ```bash
 git clone https://github.com/sonz-ai/sonzai-claude-skill ~/sonzai-claude-skill
-ln -s ~/sonzai-claude-skill/skills/sonzai-sdk ~/.agents/skills/sonzai-sdk
+ln -s ~/sonzai-claude-skill/plugins/sonzai-sdk/skills/sonzai-sdk      ~/.agents/skills/sonzai-sdk
+ln -s ~/sonzai-claude-skill/plugins/sonzai-sdk/skills/full-auto       ~/.agents/skills/full-auto
+# Internal staff (optional):
+ln -s ~/sonzai-claude-skill/plugins/sonzai-internal-staff/skills/sonzai-internal-staff \
+      ~/.agents/skills/sonzai-internal-staff
 ```
 
 ### Gemini CLI / Copilot CLI
 
-Symlink `skills/sonzai-sdk/` into your platform's skills directory. See [agentskills.io/specification](https://agentskills.io/specification) for portability details.
+Symlink each skill directory into your platform's skills root. See [agentskills.io/specification](https://agentskills.io/specification) for portability details.
 
-## What's inside
+Per-skill source paths (public):
 
 ```
-skills/sonzai-sdk/
-├── SKILL.md                              # router (always-loaded; <200 words)
-├── intake.md                             # wizard interview (7 questions)
-├── existing-codebase-audit.md            # 8-step insertion-point checklist
-├── archetypes/                           # 7 vertical playbooks
-│   ├── companion.md
-│   ├── guide-router.md                   # MBTI / personality-routed
-│   ├── enterprise-assistant.md
-│   ├── customer-support.md
-│   ├── game-npc.md
-│   ├── coach-therapist.md
-│   └── hybrid-custom.md
-├── features/                             # 20 SDK-surface refs
-│   ├── generation.md inventory.md custom-tools.md custom-states.md
-│   ├── capabilities.md voice.md knowledge-base.md org-knowledge-base.md
-│   ├── priming.md personas.md proactive.md shared-memory.md
-│   ├── multiplayer-memory.md instances.md events-and-dialogue.md
-│   ├── agent-insights.md self-improvement.md models.md
-│   ├── eval-and-simulation.md webhooks.md
-├── decisions/                            # 10 decision aids
-│   ├── memory-mode.md state-vs-inventory.md capabilities-matrix.md
-│   ├── sharedmemory-vs-wisdom.md byok-vs-customllm.md
-│   ├── instances-vs-multitenant.md sessions-vs-conversations.md
-│   ├── proactive-channel.md post-processing-model.md
-│   └── generation-vs-manual-create.md
-├── migrations/                           # 9 from-X playbooks
-│   ├── overview.md mem0.md langchain.md letta.md zep.md
-│   ├── openai-assistants.md character-ai.md crm-csv.md raw-json.md
-├── spec-templates/                       # wizard output templates
-│   ├── archetype-spec.md.template archetype-plan.md.template
-│   └── existing-codebase-spec.md.template migration-spec.md.template
-└── references/                           # syntax lookup (kept from v0)
-    ├── drift-detection.md auth-and-setup.md
-    ├── python.md typescript.md go.md
-    ├── streaming-chat.md migration-from-http.md troubleshooting.md
+plugins/sonzai-sdk/skills/sonzai-sdk/
+plugins/sonzai-sdk/skills/full-auto/
 ```
 
-**60 files; ~43,000 words.** `SKILL.md` is the only always-loaded file (under 200 words narrative); everything else loads on demand based on the wizard's routing.
+Internal-staff (optional):
+
+```
+plugins/sonzai-internal-staff/skills/sonzai-internal-staff/
+```
+
+---
+
+## Repo layout
+
+```
+sonzai-claude-skill/
+├── .claude-plugin/
+│   └── marketplace.json                      # marketplace listing for sonz-ai
+├── plugins/
+│   ├── sonzai-sdk/                           # PUBLIC plugin (auto-installed for everyone)
+│   │   ├── .claude-plugin/plugin.json        # Claude Code manifest
+│   │   ├── .codex-plugin/plugin.json         # Codex manifest
+│   │   └── skills/
+│   │       ├── sonzai-sdk/                   # wizard skill
+│   │       │   ├── SKILL.md                  # router (always-loaded; <200 words)
+│   │       │   ├── intake.md                 # 8-question wizard
+│   │       │   ├── existing-codebase-audit.md
+│   │       │   ├── archetypes/               # 7 vertical playbooks
+│   │       │   ├── features/                 # 20 SDK-surface refs
+│   │       │   ├── decisions/                # 11 decision aids (incl. runtime-mode)
+│   │       │   ├── migrations/               # 9 from-X playbooks
+│   │       │   ├── spec-templates/           # wizard output templates
+│   │       │   └── references/               # syntax lookup
+│   │       └── full-auto/                    # autonomous closed-loop skill
+│   │           ├── SKILL.md, pipeline.md, transcript-analysis.md,
+│   │           ├── answer-derivation.md, builder-dispatch.md, qa-loop.md,
+│   │           ├── subagent-prompts/         # builder + fixer prompt templates
+│   │           └── final-report.md.template
+│   └── sonzai-internal-staff/                # INTERNAL plugin (opt-in install only)
+│       ├── .claude-plugin/plugin.json
+│       ├── .codex-plugin/plugin.json
+│       └── skills/
+│           └── sonzai-internal-staff/
+│               ├── SKILL.md
+│               └── workspace-pointers.md
+├── README.md
+├── CHANGELOG.md
+├── CLAUDE.md                                 # maintenance rules
+├── LICENSE
+└── package.json
+```
+
+---
+
+## Why two plugins instead of a runtime gate?
+
+Earlier versions had a single plugin with the internal skill gated at runtime by `SONZAI_INTERNAL_STAFF=1` env var. That worked but still **copied the internal SKILL.md into every public user's disk**, which is wasteful and conceptually messy.
+
+Splitting into two plugins moves the gate to **install time** (`/plugin install` is the decision point), which is exactly the plugin marketplace model Anthropic's own `claude-plugins-official` marketplace uses (200+ plugins in one repo, each installed by name). Public users literally never touch the internal-staff files.
+
+---
 
 ## Source-of-truth discipline
 
-Every endpoint name, parameter name, response field, and capability flag referenced in the skill is verified against either:
+Every endpoint name, parameter name, response field, and capability flag referenced in the **public** skills is verified against either:
 
 - A current public SDK repo (`sonzai-python`, `sonzai-typescript`, `sonzai-go`)
 - The live OpenAPI spec at `https://api.sonz.ai/docs/openapi.json`
 
 Skills never invent symbols. When the SDK drifts, `references/drift-detection.md` is the agent's first stop.
 
+The **internal-staff** skill additionally references monolith paths (`sonzai-ai-monolith-ts/services/contextengine/`, etc.). Those references are useless to external users — that's the point. The plugin is install-time gated for that reason.
+
+---
+
 ## Privacy & safety
 
-This skill **only references the public sonz.ai API surface**: the three public SDK repos, the live OpenAPI spec, and the developer docs at `https://sonz.ai/docs`. Zero references to platform internals (context engine, AI service, billing, infrastructure, tenant names). See `CLAUDE.md` for the maintenance rule that enforces this.
+The **public** plugin (`sonzai-sdk`) only references the public sonz.ai API surface: the three public SDK repos, the live OpenAPI spec, and the developer docs at `https://sonz.ai/docs`. Zero references to platform internals (context engine, AI service, billing, infrastructure, tenant names). See `CLAUDE.md` for the maintenance rule that enforces this.
+
+The **internal-staff** plugin references private monolith paths by name (`sonzai-ai-monolith-ts/...`). The repo itself is public, but those paths only resolve on a staff machine with the private repos cloned. **No secrets, API keys, or tenant data are ever embedded** in either plugin.
+
+---
 
 ## Contributing
 
@@ -108,11 +205,16 @@ PRs welcome. Before submitting:
 1. **Verify symbols** — grep every method/field name against the SDK source. The skill's value collapses if it points at things that don't exist.
 2. **For new archetypes:** dispatch a baseline subagent (per `superpowers:writing-skills` Iron Law) without the archetype playbook; document failures; write the playbook to address them; re-run.
 3. **Keep `SKILL.md` under 200 words narrative.** It loads into every conversation; every token counts.
-4. **No platform internals.** See `CLAUDE.md`.
+4. **No platform internals in `plugins/sonzai-sdk/`.** Internal pointers go in `plugins/sonzai-internal-staff/` only. See `CLAUDE.md`.
+5. **Bump both `plugin.json` files in lockstep** with the repo's `package.json` version.
+
+---
 
 ## Architecture decisions captured here
 
-See `docs/design/2026-05-13-skill-v1-design.md` for the full design rationale (the audit of v0, the goals, what's deliberately out of scope, the risks). See `docs/design/2026-05-13-skill-v1-plan.md` for the implementation plan (58 atomic tasks across 8 phases).
+See `docs/design/2026-05-13-skill-v1-design.md` for the original v1 design and `docs/design/2026-05-13-skill-v1-plan.md` for the implementation plan. Later versions (v1.2 full-auto, v1.3 internal-staff gate, v1.4 runtime mode, v1.5 two-plugin split) are documented in `CHANGELOG.md`.
+
+---
 
 ## License
 

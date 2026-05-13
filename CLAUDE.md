@@ -4,13 +4,16 @@ Rules for AI agents (and humans) working inside this repo.
 
 ## What this repo is
 
-A public Claude Code / Codex / Gemini CLI skill that helps other AI agents implement the Sonzai SDK correctly. Distributed via plugin marketplaces and direct symlink.
+A multi-plugin Claude Code / Codex / Gemini CLI repo that helps other AI agents implement the Sonzai SDK correctly. Two plugins ship from this repo:
+
+- **`plugins/sonzai-sdk/`** — PUBLIC plugin. Anyone can install. Distributed via the `sonz-ai` plugin marketplace and direct symlink. Strictly tenant-agnostic.
+- **`plugins/sonzai-internal-staff/`** — INTERNAL plugin. Same repo, separate plugin manifest, install-time gated. Sonzai staff opt in with a second `/plugin install` command. Layers monolith / workspace awareness onto the public plugin.
 
 ## Hard rules
 
-### 1. No platform internals — ever
+### 1. No platform internals in `plugins/sonzai-sdk/` — ever
 
-This skill is **public**. It runs in users' editors at customer sites. It must never reference:
+The public plugin runs in users' editors at customer sites. Inside `plugins/sonzai-sdk/skills/` and any future public-plugin skill, never reference:
 
 - `services/contextengine/` source paths or internal Go modules
 - `services/ai-service/` (TypeScript AI middleware) internals
@@ -20,14 +23,18 @@ This skill is **public**. It runs in users' editors at customer sites. It must n
 - BigQuery / DuckLake table names, internal metrics, billing math
 - Anything in the `sonzai-ai-monolith-ts` repo
 
-**Source of truth for what the skill teaches:** only the public surface area, i.e.:
+**Source of truth for what the public plugin teaches:** only the public surface area, i.e.:
 - `github.com/sonz-ai/sonzai-python` (pip: `sonzai`)
 - `github.com/sonz-ai/sonzai-typescript` (npm: `@sonzai-labs/agents`)
 - `github.com/sonz-ai/sonzai-go`
 - The live OpenAPI spec at `https://api.sonz.ai/docs/openapi.json`
 - The public docs at `https://sonz.ai/docs`
 
-If a contributor PR adds anything from the internal surface, reject it.
+If a contributor PR adds anything from the internal surface to `plugins/sonzai-sdk/`, reject it. Tenant names are forbidden in **both** plugins regardless — staff still don't leak names.
+
+### 1b. Internal pointers live ONLY in `plugins/sonzai-internal-staff/`
+
+Monolith paths (`sonzai-ai-monolith-ts/...`), workspace-resolution rules, server-log tailing instructions, and similar staff-only material belong inside `plugins/sonzai-internal-staff/skills/sonzai-internal-staff/` and nowhere else. The plugin is install-time gated by the `sonz-ai` marketplace (`category: internal`), so external users never receive these files on disk. The skill itself still needs to be safe to read aloud — no secrets, no tenant names, no API keys.
 
 ### 2. Live spec is the ground truth
 
@@ -51,8 +58,8 @@ The skill uses Claude Code tool names (`Read`, `Bash`, etc.). When mentioning a 
 
 After a breaking change ships in any of the three SDKs:
 
-1. Update `references/{lang}.md` Quick Start to match
-2. Bump `package.json` version (semver: minor for additions, major for breaks)
+1. Update `plugins/sonzai-sdk/skills/sonzai-sdk/references/{lang}.md` Quick Start to match
+2. Bump version in lockstep: `package.json`, `plugins/sonzai-sdk/.claude-plugin/plugin.json`, `plugins/sonzai-sdk/.codex-plugin/plugin.json`, `plugins/sonzai-internal-staff/.claude-plugin/plugin.json`, `plugins/sonzai-internal-staff/.codex-plugin/plugin.json` (semver: minor for additions, major for breaks)
 3. Re-run the drift-detection guidance against the new live spec
 4. Commit with `feat(skill):` / `fix(skill):` prefix
 

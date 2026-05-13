@@ -1,0 +1,34 @@
+{
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
+  "name": "sonz-ai",
+  "description": "Sonzai SDK skills for AI coding agents. Wizard-driven builds, autonomous closed-loop builds, and an internal-staff dogfooding companion.",
+  "owner": {
+    "name": "Sonzai Labs",
+    "email": "engineering@sonz.ai",
+    "url": "https://sonz.ai"
+  },
+  "plugins": [
+    {
+      "name": "sonzai-sdk",
+      "description": "Wizard + autonomous builder for the Sonzai SDK. Prescribes archetype, memory mode, runtime mode (full-chat vs memory-layer), BYOK posture, and capabilities — then drives spec → review → plan. full-auto runs the same pipeline closed-loop from a meeting transcript with API + UI verification.",
+      "author": {
+        "name": "Sonzai Labs",
+        "url": "https://sonz.ai"
+      },
+      "category": "development",
+      "source": "./plugins/sonzai-sdk",
+      "homepage": "https://sonz.ai/docs"
+    },
+    {
+      "name": "sonzai-internal-staff",
+      "description": "Internal-only companion plugin to sonzai-sdk. Adds monolith + workspace awareness for Sonzai staff dogfooding. Requires read access to the private sonzai-ai-monolith-ts repo — useless to external users; do not install unless you are Sonzai internal staff.",
+      "author": {
+        "name": "Sonzai Labs",
+        "url": "https://sonz.ai"
+      },
+      "category": "internal",
+      "source": "./plugins/sonzai-internal-staff",
+      "homepage": "https://sonz.ai/docs"
+    }
+  ]
+}
